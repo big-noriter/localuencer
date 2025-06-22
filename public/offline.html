@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오프라인 - 미나의 로컬루언서</title>
+    <style>
+        /* 오프라인 페이지 전용 스타일 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .offline-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .offline-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            background: #f0f0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #666;
+        }
+        
+        .offline-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .offline-message {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .offline-features {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        
+        .offline-features h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+        
+        .feature-list {
+            list-style: none;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .feature-list li::before {
+            content: "✓";
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        
+        .retry-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px;
+        }
+        
+        .retry-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .cache-button {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 10px;
+        }
+        
+        .cache-button:hover {
+            background: #e0e0e0;
+            border-color: #ccc;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 20px 0;
+            padding: 10px 15px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #856404;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f39c12;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .cached-content {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            text-align: left;
+        }
+        
+        .cached-content h4 {
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+        
+        .cached-links {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .cached-link {
+            display: block;
+            padding: 12px 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.2s;
+        }
+        
+        .cached-link:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+        }
+        
+        @media (max-width: 480px) {
+            .offline-container {
+                padding: 30px 20px;
+            }
+            
+            .offline-title {
+                font-size: 24px;
+            }
+            
+            .offline-icon {
+                width: 100px;
+                height: 100px;
+                font-size: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <!-- 오프라인 아이콘 -->
+        <div class="offline-icon">
+            📱
+        </div>
+
+        <!-- 메인 메시지 -->
+        <h1 class="offline-title">오프라인 모드</h1>
+        <p class="offline-message">
+            현재 인터넷에 연결되어 있지 않습니다.<br>
+            하지만 일부 기능은 여전히 사용하실 수 있어요!
+        </p>
+
+        <!-- 연결 상태 표시 -->
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>연결 상태를 확인하고 있습니다...</span>
+        </div>
+
+        <!-- 사용 가능한 기능들 -->
+        <div class="offline-features">
+            <h3>오프라인에서 사용 가능한 기능</h3>
+            <ul class="feature-list">
+                <li>이전에 방문한 페이지 보기</li>
+                <li>저장된 브이로그 콘텐츠 확인</li>
+                <li>장바구니 내용 보기 (저장된 항목)</li>
+                <li>즐겨찾기 목록 확인</li>
+                <li>설정 및 프로필 정보 보기</li>
+                <li>오프라인 상태에서 작업 저장 (온라인 시 동기화)</li>
+            </ul>
+        </div>
+
+        <!-- 액션 버튼들 -->
+        <div>
+            <button class="retry-button" onclick="retryConnection()">
+                🔄 연결 다시 시도
+            </button>
+            <button class="cache-button" onclick="showCachedContent()">
+                📦 저장된 콘텐츠 보기
+            </button>
+        </div>
+
+        <!-- 캐시된 콘텐츠 링크들 -->
+        <div class="cached-content" id="cachedContent" style="display: none;">
+            <h4>저장된 페이지들</h4>
+            <div class="cached-links">
+                <a href="/" class="cached-link">🏠 홈페이지</a>
+                <a href="/vlogs" class="cached-link">📹 브이로그</a>
+                <a href="/shop" class="cached-link">🛍️ 쇼핑</a>
+                <a href="/qa" class="cached-link">❓ Q&A</a>
+                <a href="/sns" class="cached-link">📱 SNS</a>
+                <a href="/cart" class="cached-link">🛒 장바구니</a>
+                <a href="/my/orders" class="cached-link">📋 주문 내역</a>
+                <a href="/my/wishlist" class="cached-link">❤️ 위시리스트</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 오프라인 페이지 JavaScript 기능
+         * 연결 상태 모니터링 및 사용자 인터랙션 처리
+         */
+
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        /**
+         * 페이지 로드 시 초기화
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            checkConnectionStatus();
+            setupNetworkListeners();
+            updateLastVisitTime();
+        });
+
+        /**
+         * 네트워크 상태 리스너 설정
+         */
+        function setupNetworkListeners() {
+            window.addEventListener('online', function() {
+                showConnectionRestored();
+            });
+
+            window.addEventListener('offline', function() {
+                updateConnectionStatus('오프라인 상태입니다');
+            });
+        }
+
+        /**
+         * 연결 상태 확인
+         */
+        function checkConnectionStatus() {
+            if (navigator.onLine) {
+                retryConnection();
+            } else {
+                updateConnectionStatus('인터넷 연결을 확인해주세요');
+            }
+        }
+
+        /**
+         * 연결 재시도
+         */
+        async function retryConnection() {
+            const statusElement = document.querySelector('.status-indicator span');
+            const retryButton = document.querySelector('.retry-button');
+            
+            retryButton.disabled = true;
+            retryButton.textContent = '🔄 연결 확인 중...';
+            
+            try {
+                // 간단한 연결 테스트
+                const response = await fetch('/?offline-check=true', {
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                
+                if (response.ok) {
+                    showConnectionRestored();
+                    return;
+                }
+            } catch (error) {
+                console.log('연결 테스트 실패:', error);
+            }
+            
+            retryCount++;
+            if (retryCount < maxRetries) {
+                updateConnectionStatus(`연결 재시도 중... (${retryCount}/${maxRetries})`);
+                setTimeout(() => {
+                    retryButton.disabled = false;
+                    retryButton.textContent = '🔄 연결 다시 시도';
+                }, 2000);
+            } else {
+                updateConnectionStatus('연결에 실패했습니다. 나중에 다시 시도해주세요.');
+                retryButton.disabled = false;
+                retryButton.textContent = '🔄 연결 다시 시도';
+                retryCount = 0;
+            }
+        }
+
+        /**
+         * 연결 복구 시 처리
+         */
+        function showConnectionRestored() {
+            const statusElement = document.querySelector('.status-indicator');
+            statusElement.innerHTML = `
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #4CAF50;"></div>
+                <span>연결이 복구되었습니다! 페이지를 새로고침합니다...</span>
+            `;
+            statusElement.style.background = '#d4edda';
+            statusElement.style.borderColor = '#c3e6cb';
+            statusElement.style.color = '#155724';
+            
+            // 2초 후 메인 페이지로 이동
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        }
+
+        /**
+         * 연결 상태 업데이트
+         */
+        function updateConnectionStatus(message) {
+            const statusElement = document.querySelector('.status-indicator span');
+            statusElement.textContent = message;
+        }
+
+        /**
+         * 캐시된 콘텐츠 표시/숨김
+         */
+        function showCachedContent() {
+            const cachedContent = document.getElementById('cachedContent');
+            const button = document.querySelector('.cache-button');
+            
+            if (cachedContent.style.display === 'none') {
+                cachedContent.style.display = 'block';
+                button.textContent = '📦 콘텐츠 숨기기';
+                loadCachedPages();
+            } else {
+                cachedContent.style.display = 'none';
+                button.textContent = '📦 저장된 콘텐츠 보기';
+            }
+        }
+
+        /**
+         * 캐시된 페이지 목록 로드
+         */
+        async function loadCachedPages() {
+            try {
+                const cacheNames = await caches.keys();
+                const cachedUrls = new Set();
+                
+                for (const cacheName of cacheNames) {
+                    const cache = await caches.open(cacheName);
+                    const requests = await cache.keys();
+                    
+                    requests.forEach(request => {
+                        const url = new URL(request.url);
+                        if (url.origin === location.origin && url.pathname !== '/offline.html') {
+                            cachedUrls.add(url.pathname);
+                        }
+                    });
+                }
+                
+                updateCachedLinks(Array.from(cachedUrls));
+            } catch (error) {
+                console.error('캐시된 페이지 로드 실패:', error);
+            }
+        }
+
+        /**
+         * 캐시된 링크 목록 업데이트
+         */
+        function updateCachedLinks(urls) {
+            const linksContainer = document.querySelector('.cached-links');
+            
+            // 기본 링크들 유지하고 실제 캐시된 페이지들 추가
+            const additionalLinks = urls
+                .filter(url => ![
+                    '/', '/vlogs', '/shop', '/qa', '/sns', 
+                    '/cart', '/my/orders', '/my/wishlist'
+                ].includes(url))
+                .map(url => `
+                    <a href="${url}" class="cached-link">
+                        📄 ${url.replace('/', '') || '홈'}
+                    </a>
+                `).join('');
+            
+            if (additionalLinks) {
+                linksContainer.innerHTML += additionalLinks;
+            }
+        }
+
+        /**
+         * 마지막 방문 시간 업데이트
+         */
+        function updateLastVisitTime() {
+            const now = new Date();
+            localStorage.setItem('lastOfflineVisit', now.toISOString());
+        }
+
+        /**
+         * Service Worker 메시지 리스너
+         */
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', function(event) {
+                if (event.data.type === 'SYNC_COMPLETE') {
+                    const message = `${event.data.processedCount}개의 대기 작업이 처리되었습니다.`;
+                    updateConnectionStatus(message);
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

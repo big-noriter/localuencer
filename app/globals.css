@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode - Professional & Luxurious */
+    --background: 0 0% 98%; /* Off-white, very light gray */
+    --foreground: 240 10% 3.9%; /* Dark Slate Gray */
+
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 260 65% 55%; /* Sophisticated Purple */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 330 70% 50%; /* Elegant Pink/Rose */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 15% 90%; /* Light Gray */
+    --muted-foreground: 220 10% 40%; /* Medium Gray */
+
+    --accent: 220 15% 95%; /* Very Light Gray for subtle accents */
+    --accent-foreground: 240 8% 15%; /* Darker for text on accent */
+
+    --destructive: 0 72% 51%; /* Clear Red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 85%; /* Slightly darker border */
+    --input: 220 15% 88%;
+    --ring: 260 65% 60%; /* Primary color for ring */
+
+    --radius: 0.5rem; /* Standard radius */
+
+    /* Custom theme colors */
+    --theme-pink: 340 82% 61%; /* #F472B6 */
+    --theme-purple: 260 82% 66%; /* #A78BFA */
+    --theme-blue: 217 91% 60%; /* #3B82F6 */
+    --theme-green: 145 63% 49%; /* #10B981 */
+    --theme-yellow: 43 96% 56%; /* #F59E0B */
+    --theme-orange: 24 95% 53%; /* #F97316 */
+
+    --footer-bg: 240 10% 10%; /* Darker footer for light mode */
+    --footer-text: 0 0% 90%; /* Light text for footer */
+
+    --gradient-start: var(--primary);
+    --gradient-end: var(--secondary);
+  }
+
+  .dark {
+    /* Dark Mode - Professional & Luxurious */
+    --background: 240 10% 10%; /* Very Dark Desaturated Blue */
+    --foreground: 0 0% 95%; /* Light Gray for text */
+
+    --card: 240 8% 15%; /* Slightly Lighter Dark Blue */
+    --card-foreground: 0 0% 95%;
+
+    --popover: 240 10% 8%; /* Darker Popover */
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 260 70% 65%; /* Brighter Purple for Dark Mode */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 330 75% 60%; /* Brighter Pink/Rose for Dark Mode */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 5% 25%; /* Dark Gray */
+    --muted-foreground: 0 0% 65%; /* Lighter Gray for muted text */
+
+    --accent: 240 5% 20%; /* Darker accent */
+    --accent-foreground: 0 0% 90%;
+
+    --destructive: 0 65% 55%; /* Slightly brighter red for dark mode */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 30%; /* Subtle border */
+    --input: 240 5% 35%;
+    --ring: 260 70% 70%; /* Primary color for ring */
+
+    /* Custom theme colors for dark mode - can be same or adjusted */
+    --theme-pink: 340 82% 61%;
+    --theme-purple: 260 82% 66%;
+    --theme-blue: 217 91% 60%;
+    --theme-green: 145 63% 49%;
+    --theme-yellow: 43 96% 56%;
+    --theme-orange: 24 95% 53%;
+
+    --footer-bg: 240 10% 5%; /* Even darker footer for dark mode */
+    --footer-text: 0 0% 80%; /* Slightly dimmer text for footer */
+
+    --gradient-start: var(--primary);
+    --gradient-end: var(--secondary);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    @apply transition-colors duration-300 ease-in-out; /* Smooth theme transition */
+  }
+}
+
+/* Custom gradient text class */
+.text-gradient-professional {
+  @apply bg-gradient-professional bg-clip-text text-transparent;
+}
+
+/* Ensure homepage hero text uses the new gradient */
+.text-gradient-pink-purple {
+  @apply text-gradient-professional;
+}
