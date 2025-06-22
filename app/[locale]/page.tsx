@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import HeroImageSlider from "@/components/hero-image-slider" // 슬라이더 컴포넌트 임포트
 import { ArrowRight, Heart, MessageSquare, PlayCircle, ShoppingBag, Sparkles, Star, Map, ImageIcon } from "lucide-react"
 import { useTranslations } from 'next-intl'
-import { SchemaOrg } from "@/components/schema-org"
-import { generateWebsiteSchema, generatePersonSchema, generateOrganizationSchema } from "@/lib/schema"
+import SchemaOrg, { combineSchemas } from "@/components/schema-org"
+import { createWebPageSchema, createBreadcrumbSchema } from "@/lib/schema"
 
 // Mock data - replace with actual data from Supabase later
 const mockStats = { followers: "1.2M", rating: "4.9", views: "2.8M" }
@@ -108,39 +108,30 @@ export default function HomePage({ params }: { params: { locale: string } }) {
   const t = useTranslations('home')
   
   // 홈페이지용 구조화 데이터 생성
-  const homePageSchema = [
-    generateWebsiteSchema(),
-    generatePersonSchema(),
-    generateOrganizationSchema(),
-    {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      "name": "로컬루언서 미나 | AI 인플루언서와 함께하는 경주 여행",
-      "description": "AI 인플루언서 미나와 함께 경주의 숨겨진 매력을 발견하세요. 브이로그, 쇼핑, AI 가이드, 사진엽서 등 다양한 서비스를 제공합니다.",
-      "url": `https://localuencer-mina.com/${params.locale}`,
-      "primaryImageOfPage": {
-        "@type": "ImageObject",
-        "url": "https://localuencer-mina.com/mina-hero.png",
-        "width": 1200,
-        "height": 630
-      },
-      "about": {
-        "@type": "Thing",
-        "name": "경주 여행",
-        "description": "경주의 역사, 문화, 관광 명소에 대한 정보"
-      },
-      "specialty": "경주 여행 가이드",
-      "mainEntity": {
-        "@type": "Person",
-        "name": "미나",
-        "description": "경주를 사랑하는 AI 인플루언서"
-      }
-    }
-  ];
+  const homePageSchema = () => {
+    const baseUrl = 'https://localuencer-mina.com';
+    const localeUrl = `${baseUrl}/${params.locale}`;
+
+    const webPageSchema = createWebPageSchema({
+      name: params.locale === 'ko' 
+        ? "로컬루언서 미나 | AI 인플루언서와 함께하는 경주 여행"
+        : "Localuencer Mina | Gyeongju Travel with AI Influencer",
+      description: params.locale === 'ko'
+        ? "AI 인플루언서 미나와 함께 경주의 숨겨진 매력을 발견하세요. 브이로그, 쇼핑, AI 가이드, 사진엽서 등 다양한 서비스를 제공합니다."
+        : "Discover the hidden charms of Gyeongju with AI influencer Mina. We provide various services including vlogs, shopping, AI guide, and photo postcards.",
+      url: localeUrl,
+      image: `${baseUrl}/mina-hero.png`,
+      datePublished: "2024-01-01",
+      dateModified: new Date().toISOString().split('T')[0],
+      inLanguage: params.locale === 'ko' ? 'ko-KR' : params.locale === 'en' ? 'en-US' : params.locale === 'ja' ? 'ja-JP' : 'zh-CN'
+    });
+
+    return webPageSchema;
+  };
   
   return (
     <>
-      <SchemaOrg schema={homePageSchema} />
+      <SchemaOrg schema={homePageSchema()} />
       <div className="space-y-16 md:space-y-24 pb-16">
         {/* Hero Section */}
         <section className="relative pt-12 pb-8 md:pt-20 md:pb-12 overflow-hidden">

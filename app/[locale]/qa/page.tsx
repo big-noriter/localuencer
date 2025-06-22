@@ -9,8 +9,8 @@ import { useAuth } from "@/lib/auth"
 import { MessageCircle, Send, Loader2 } from "lucide-react"
 import { useFormStatus } from "react-dom"
 import Link from "next/link"
-import { SchemaOrg } from "@/components/schema-org"
-import { generateFAQSchema, generateBreadcrumbSchema } from "@/lib/schema"
+import SchemaOrg, { combineSchemas } from "@/components/schema-org"
+import { createFAQPageSchema, createBreadcrumbSchema } from "@/lib/schema"
 import { useParams } from "next/navigation"
 
 import type { QA } from "@/lib/data"
@@ -121,21 +121,30 @@ export default function QAPage() {
   const generateFAQData = () => {
     if (!qas || qas.length === 0) return null;
 
+    // 기본 URL 설정
+    const baseUrl = 'https://localuencer-mina.com';
+    const localeUrl = `${baseUrl}/${locale}`;
+
     // 최대 10개의 FAQ만 사용
     const faqItems = qas.slice(0, 10).map(qa => ({
       question: qa.question,
       answer: qa.answer
     }));
 
-    const breadcrumbSchema = generateBreadcrumbSchema([
-      { name: '홈', url: `https://localuencer-mina.com/${locale}` },
-      { name: 'Q&A', url: `https://localuencer-mina.com/${locale}/qa` },
+    const faqSchema = createFAQPageSchema(faqItems);
+
+    const breadcrumbSchema = createBreadcrumbSchema([
+      { 
+        name: locale === 'ko' ? '홈' : 'Home', 
+        url: localeUrl 
+      },
+      { 
+        name: 'Q&A', 
+        url: `${localeUrl}/qa` 
+      },
     ]);
 
-    return [
-      generateFAQSchema(faqItems),
-      breadcrumbSchema
-    ];
+    return combineSchemas(faqSchema, breadcrumbSchema);
   };
 
   return (

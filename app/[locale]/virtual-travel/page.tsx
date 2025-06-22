@@ -31,8 +31,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import GoogleMaps from "@/components/maps/google-maps"
-import { SchemaOrg } from "@/components/schema-org"
-import { generateTouristAttractionSchema, generateBreadcrumbSchema } from "@/lib/schema"
+import SchemaOrg, { combineSchemas } from "@/components/schema-org"
+import { createTouristAttractionSchema, createBreadcrumbSchema } from "@/lib/schema"
 import { useParams } from "next/navigation"
 
 /**
@@ -262,26 +262,50 @@ export default function VirtualTravelPage() {
 
   // 구조화된 데이터 생성 (관광지 정보)
   const generateAttractionsSchema = () => {
+    // 기본 URL 설정
+    const baseUrl = 'https://localuencer-mina.com';
+    const localeUrl = `${baseUrl}/${locale}`;
+
     // 주요 관광지 5곳에 대한 구조화 데이터 생성
-    const attractionsSchema = virtualTours.map(tour => 
-      generateTouristAttractionSchema({
+    const attractionsSchemas = virtualTours.map(tour => 
+      createTouristAttractionSchema({
         name: tour.location,
         description: tour.description,
+        url: `${localeUrl}/virtual-travel`,
         image: tour.thumbnail,
-        address: `경상북도 경주시 ${tour.location}`,
+        address: {
+          streetAddress: tour.location,
+          addressLocality: '경주시',
+          addressRegion: '경상북도',
+          addressCountry: '대한민국'
+        },
         geo: {
           latitude: tour.coordinates.lat,
           longitude: tour.coordinates.lng
-        }
+        },
+        touristType: ['역사유적', '문화관광', '가상투어'],
+        openingHours: [
+          {
+            dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            opens: '09:00',
+            closes: '18:00'
+          }
+        ]
       })
     );
 
-    const breadcrumbSchema = generateBreadcrumbSchema([
-      { name: '홈', url: `https://localuencer-mina.com/${locale}` },
-      { name: '가상여행', url: `https://localuencer-mina.com/${locale}/virtual-travel` },
+    const breadcrumbSchema = createBreadcrumbSchema([
+      { 
+        name: locale === 'ko' ? '홈' : 'Home', 
+        url: localeUrl 
+      },
+      { 
+        name: locale === 'ko' ? '가상여행' : 'Virtual Travel', 
+        url: `${localeUrl}/virtual-travel` 
+      },
     ]);
 
-    return [...attractionsSchema, breadcrumbSchema];
+    return combineSchemas(...attractionsSchemas, breadcrumbSchema);
   };
 
   return (
