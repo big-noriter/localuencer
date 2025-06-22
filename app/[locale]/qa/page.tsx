@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import QAItem from "@/components/mina/qa-item"
-import { useAuth } from "@/lib/auth"
+import { useAuth } from "@/components/auth/auth-provider"
 import { MessageCircle, Send, Loader2 } from "lucide-react"
 import { useFormStatus } from "react-dom"
 import Link from "next/link"
@@ -72,7 +72,13 @@ export default function QAPage() {
       const result = await response.json()
       if (result.data) {
         const convertedQAs = result.data.map(convertServerQAToQA)
-        setQas(convertedQAs)
+        // 최신순으로 정렬 (answeredAt 기준)
+        const sortedQAs = convertedQAs.sort((a, b) => {
+          const dateA = new Date(a.answeredAt).getTime()
+          const dateB = new Date(b.answeredAt).getTime()
+          return dateB - dateA // 최신 날짜가 먼저 오도록
+        })
+        setQas(sortedQAs)
       }
     } catch (error) {
       console.error("Error loading Q&As:", error)

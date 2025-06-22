@@ -54,42 +54,73 @@ export function PWAProvider({ children }: PWAProviderProps) {
       if (navigator.onLine) {
         console.log('오프라인 데이터 초기화 시작...')
         
+        // 서버 연결 확인을 위한 간단한 테스트
+        try {
+          const testResponse = await fetch('/api/vlogs', { 
+            method: 'HEAD',
+            signal: AbortSignal.timeout(5000) // 5초 타임아웃
+          })
+          if (!testResponse.ok) {
+            console.warn('서버 연결 실패, 오프라인 데이터 초기화를 건너뜁니다')
+            setIsOfflineReady(true)
+            return
+          }
+        } catch (error) {
+          console.warn('서버 연결 테스트 실패:', error)
+          setIsOfflineReady(true)
+          return
+        }
+        
         // 기본 데이터 캐싱 (에러가 발생해도 계속 진행)
-        try {
-          const vlogsResponse = await fetch('/api/vlogs')
-          if (vlogsResponse.ok) {
-            const vlogsData = await vlogsResponse.json()
-            if (vlogsData.vlogs) {
-              await offlineHelpers.cacheVlogs(vlogsData.vlogs)
-            }
-          }
-        } catch (error) {
-          console.warn('브이로그 데이터 캐싱 실패:', error)
-        }
+        const cachePromises = [
+          // 브이로그 데이터 캐싱
+          fetch('/api/vlogs', { signal: AbortSignal.timeout(10000) })
+            .then(async (response) => {
+              if (response.ok) {
+                const contentType = response.headers.get('content-type')
+                if (contentType && contentType.includes('application/json')) {
+                  const data = await response.json()
+                  if (data.vlogs) {
+                    await offlineHelpers.cacheVlogs(data.vlogs)
+                  }
+                }
+              }
+            })
+            .catch(error => console.warn('브이로그 데이터 캐싱 실패:', error)),
 
-        try {
-          const productsResponse = await fetch('/api/shop')
-          if (productsResponse.ok) {
-            const productsData = await productsResponse.json()
-            if (productsData.products) {
-              await offlineHelpers.cacheProducts(productsData.products)
-            }
-          }
-        } catch (error) {
-          console.warn('상품 데이터 캐싱 실패:', error)
-        }
+          // 상품 데이터 캐싱
+          fetch('/api/shop', { signal: AbortSignal.timeout(10000) })
+            .then(async (response) => {
+              if (response.ok) {
+                const contentType = response.headers.get('content-type')
+                if (contentType && contentType.includes('application/json')) {
+                  const data = await response.json()
+                  if (data.products) {
+                    await offlineHelpers.cacheProducts(data.products)
+                  }
+                }
+              }
+            })
+            .catch(error => console.warn('상품 데이터 캐싱 실패:', error)),
 
-        try {
-          const qasResponse = await fetch('/api/qna')
-          if (qasResponse.ok) {
-            const qasData = await qasResponse.json()
-            if (qasData.qas) {
-              await offlineHelpers.cacheQAs(qasData.qas)
-            }
-          }
-        } catch (error) {
-          console.warn('Q&A 데이터 캐싱 실패:', error)
-        }
+          // Q&A 데이터 캐싱
+          fetch('/api/qna', { signal: AbortSignal.timeout(10000) })
+            .then(async (response) => {
+              if (response.ok) {
+                const contentType = response.headers.get('content-type')
+                if (contentType && contentType.includes('application/json')) {
+                  const data = await response.json()
+                  if (data.data) {
+                    await offlineHelpers.cacheQAs(data.data)
+                  }
+                }
+              }
+            })
+            .catch(error => console.warn('Q&A 데이터 캐싱 실패:', error))
+        ]
+
+        // 모든 캐싱 작업을 병렬로 실행
+        await Promise.allSettled(cachePromises)
         
         console.log('오프라인 데이터 초기화 완료')
       }

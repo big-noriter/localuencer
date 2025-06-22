@@ -20,10 +20,21 @@ interface SchemaOrgProps {
  * @returns script 태그로 감싼 JSON-LD 구조화 데이터
  */
 export default function SchemaOrg({ schema }: SchemaOrgProps) {
+  // JSON.stringify를 안정적으로 사용하여 하이드레이션 불일치 방지
+  const jsonLd = React.useMemo(() => {
+    try {
+      return JSON.stringify(schema, null, 0);
+    } catch (error) {
+      console.error('Schema serialization error:', error);
+      return '{}';
+    }
+  }, [schema]);
+
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd }}
+      suppressHydrationWarning
     />
   );
 }

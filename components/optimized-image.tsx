@@ -215,7 +215,7 @@ export function OptimizedImage({
           width={!fill ? width : undefined}
           height={!fill ? height : undefined}
           fill={fill}
-          sizes={getResponsiveSizes()}
+          sizes={fill ? (getResponsiveSizes() || '100vw') : undefined}
           quality={quality}
           priority={priority}
           placeholder={placeholder}

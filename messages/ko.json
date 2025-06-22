@@ -13,7 +13,9 @@
     "profile": "프로필",
     "settings": "설정",
     "login": "로그인",
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "aiTravelPlanner": "AI 여행 추천",
+    "mapTravel": "지도여행"
   },
   "home": {
     "title": "안뇽하세용! 여러분의 귀염뽀짝 AI 친구, 미나에용!",
@@ -98,6 +100,25 @@
     "searchPlaceholder": "질문을 검색하세요...",
     "noResults": "검색 결과가 없습니다.",
     "loading": "답변을 생성하고 있어요..."
+  },
+  "mapTravel": {
+    "title": "지도 여행",
+    "subtitle": "경주의 아름다운 관광지들을 지도와 3D 지구에서 탐험해보세요",
+    "googleMaps": "여행 경로 지도",
+    "earthViewer": "3D 지구 뷰어",
+    "tourSpots": "경주 관광지 목록",
+    "selectedSpot": "선택된 관광지",
+    "locationInfo": "위치 정보",
+    "latitude": "위도",
+    "longitude": "경도",
+    "category": "카테고리",
+    "description": "설명",
+    "loading": "지도 데이터를 불러오는 중...",
+    "currentSelection": "현재 선택",
+    "selectSpot": "관광지를 선택하세요",
+    "moreSpots": "개 더...",
+    "travelRoute": "여행 경로",
+    "spotDetails": "관광지 상세 정보"
   },
   "sns": {
     "title": "미나의 SNS",

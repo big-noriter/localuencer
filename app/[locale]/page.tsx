@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import HeroImageSlider from "@/components/hero-image-slider" // 슬라이더 컴포넌트 임포트
 import { ArrowRight, Heart, MessageSquare, PlayCircle, ShoppingBag, Sparkles, Star, Map, ImageIcon } from "lucide-react"
-import { useTranslations } from 'next-intl'
+
 import SchemaOrg, { combineSchemas } from "@/components/schema-org"
 import { createWebPageSchema, createBreadcrumbSchema } from "@/lib/schema"
 
@@ -104,26 +104,57 @@ const heroImages = [
   { src: "/mina-active.png", alt: "미나 활동적인 모습 이미지" },
 ]
 
-export default function HomePage({ params }: { params: { locale: string } }) {
-  const t = useTranslations('home')
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
+  
+  // locale 유효성 검사
+  const validLocales = ['ko', 'en', 'ja', 'zh']
+  const safeLocale = validLocales.includes(locale) ? locale : 'ko'
+  
+  // 서버 컴포넌트에서 안전한 메시지 로딩
+  let messages: any = {}
+  try {
+    const messageModule = await import(`@/messages/${safeLocale}.json`)
+    messages = messageModule.default || messageModule
+  } catch (error) {
+    console.error(`Failed to load messages for locale: ${safeLocale}`, error)
+    // 기본값으로 한국어 메시지 사용
+    try {
+      const defaultModule = await import(`@/messages/ko.json`)
+      messages = defaultModule.default || defaultModule
+    } catch (fallbackError) {
+      console.error('Failed to load fallback messages', fallbackError)
+      messages = {}
+    }
+  }
+  
+  // 서버 컴포넌트에서 직접 메시지 접근
+  const getTranslation = (key: string) => {
+    const keys = key.split('.')
+    let value = messages
+    for (const k of keys) {
+      value = value?.[k]
+    }
+    return value || key
+  }
   
   // 홈페이지용 구조화 데이터 생성
   const homePageSchema = () => {
     const baseUrl = 'https://localuencer-mina.com';
-    const localeUrl = `${baseUrl}/${params.locale}`;
+    const localeUrl = `${baseUrl}/${safeLocale}`;
 
     const webPageSchema = createWebPageSchema({
-      name: params.locale === 'ko' 
+      name: safeLocale === 'ko' 
         ? "로컬루언서 미나 | AI 인플루언서와 함께하는 경주 여행"
         : "Localuencer Mina | Gyeongju Travel with AI Influencer",
-      description: params.locale === 'ko'
+      description: safeLocale === 'ko'
         ? "AI 인플루언서 미나와 함께 경주의 숨겨진 매력을 발견하세요. 브이로그, 쇼핑, AI 가이드, 사진엽서 등 다양한 서비스를 제공합니다."
         : "Discover the hidden charms of Gyeongju with AI influencer Mina. We provide various services including vlogs, shopping, AI guide, and photo postcards.",
       url: localeUrl,
       image: `${baseUrl}/mina-hero.png`,
       datePublished: "2024-01-01",
       dateModified: new Date().toISOString().split('T')[0],
-      inLanguage: params.locale === 'ko' ? 'ko-KR' : params.locale === 'en' ? 'en-US' : params.locale === 'ja' ? 'ja-JP' : 'zh-CN'
+      inLanguage: safeLocale === 'ko' ? 'ko-KR' : safeLocale === 'en' ? 'en-US' : safeLocale === 'ja' ? 'ja-JP' : 'zh-CN'
     });
 
     return webPageSchema;
@@ -146,15 +177,15 @@ export default function HomePage({ params }: { params: { locale: string } }) {
                   💖 AI 로컬루언서 미나 등장! 💖
                 </span>
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground">
-                  {t('title')} <br className="hidden md:block" />
+                  {getTranslation('home.title')} <br className="hidden md:block" />
                   <span className="text-gradient-professional">미나</span>! ପ(๑•ᴗ•๑)ଓ ♡
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-lg mx-auto md:mx-0">
-                  {t('subtitle')} 🗺️✨
+                  {getTranslation('home.subtitle')} 🗺️✨
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                   <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg" asChild>
-                    <Link href="/vlogs">{t('watchVideos')}</Link>
+                    <Link href="/vlogs">{getTranslation('home.watchVideos')}</Link>
                   </Button>
                   <Button
                     size="lg"
@@ -162,7 +193,7 @@ export default function HomePage({ params }: { params: { locale: string } }) {
                     className="border-secondary text-secondary hover:bg-secondary/10 shadow-lg"
                     asChild
                   >
-                    <Link href="/qa">{t('askMina')}</Link>
+                    <Link href="/qa">{getTranslation('home.askMina')}</Link>
                   </Button>
                 </div>
                 <div className="flex justify-center md:justify-start space-x-6 pt-4">
@@ -288,7 +319,11 @@ export default function HomePage({ params }: { params: { locale: string } }) {
                   <div className="aspect-[4/3] relative">
                     {" "}
                     {/* Adjusted aspect ratio for better image display */}
-                    <img src={vlog.img || "/placeholder.svg"} alt={vlog.title} className="w-full h-full object-cover" />
+                    <img 
+                      src={vlog.img || "/placeholder.svg?height=203&width=360"} 
+                      alt={vlog.title} 
+                      className="w-full h-full object-cover" 
+                    />
                     <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md">
                       {vlog.tag}
                     </div>
@@ -311,7 +346,7 @@ export default function HomePage({ params }: { params: { locale: string } }) {
               <Card className="overflow-hidden shadow-lg">
                 <div className="aspect-video relative group">
                   <img
-                    src={mockPopularVideo.thumbnail || "/placeholder.svg"}
+                    src={mockPopularVideo.thumbnail || "/placeholder.svg?height=400&width=600"}
                     alt={mockPopularVideo.title}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
@@ -346,7 +381,7 @@ export default function HomePage({ params }: { params: { locale: string } }) {
                   className="flex items-center p-3 shadow-md hover:shadow-lg transition-shadow duration-300"
                 >
                   <img
-                    src={video.img || "/placeholder.svg"}
+                    src={video.img || "/placeholder.svg?height=64&width=96"}
                     alt={video.title}
                     className="w-24 h-16 object-cover rounded-md mr-4"
                   />

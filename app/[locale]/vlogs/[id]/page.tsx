@@ -7,16 +7,17 @@ import { createVideoObjectSchema, createBreadcrumbSchema } from '@/lib/schema';
 import { Metadata } from 'next';
 
 interface VlogDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
     locale: string;
-  };
+  }>;
 }
 
 // 동적 메타데이터 생성
 export async function generateMetadata({ params }: VlogDetailPageProps): Promise<Metadata> {
   try {
-    const response = await fetch(`http://localhost:3000/api/vlogs/${params.id}`);
+    const { locale, id } = await params
+    const response = await fetch(`http://localhost:3000/api/vlogs/${id}`);
     
     if (!response.ok) {
       return {
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: VlogDetailPageProps): Promise
     
     const vlog = await response.json();
     
-    const title = params.locale === 'ko' 
+    const title = locale === 'ko' 
       ? `${vlog.title} | 로컬루언서 미나 브이로그` 
       : `${vlog.title} | Localuencer Mina Vlog`;
     
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: VlogDetailPageProps): Promise
         title: vlog.title,
         description: vlog.summary,
         type: 'video',
-        url: `https://localuencer-mina.com/${params.locale}/vlogs/${params.id}`,
+        url: `https://localuencer-mina.com/${locale}/vlogs/${id}`,
         images: [
           {
             url: vlog.thumbnailUrl || '/placeholder.svg',
@@ -59,17 +60,17 @@ export async function generateMetadata({ params }: VlogDetailPageProps): Promise
     };
   } catch (error) {
     return {
-      title: params.locale === 'ko' ? '브이로그' : 'Vlog',
-      description: params.locale === 'ko' 
-        ? '로컬루언서 미나의 브이로그입니다.' 
-        : 'Localuencer Mina\'s vlog.'
+      title: 'Vlog',
+      description: 'Localuencer Mina\'s vlog.'
     };
   }
 }
 
 export default async function VlogDetailPage({ params }: VlogDetailPageProps) {
+  const { locale, id } = await params
+  
   // API에서 브이로그 데이터 가져오기
-  const response = await fetch(`http://localhost:3000/api/vlogs/${params.id}`);
+  const response = await fetch(`http://localhost:3000/api/vlogs/${id}`);
   
   if (response.status === 404) {
     notFound();
@@ -83,10 +84,10 @@ export default async function VlogDetailPage({ params }: VlogDetailPageProps) {
 
   // 기본 URL 설정
   const baseUrl = 'https://localuencer-mina.com';
-  const localeUrl = `${baseUrl}/${params.locale}`;
+  const localeUrl = `${baseUrl}/${locale}`;
   
   // 브이로그 URL 생성
-  const vlogUrl = `${localeUrl}/vlogs/${params.id}`;
+  const vlogUrl = `${localeUrl}/vlogs/${id}`;
   
   // 구조화된 데이터 생성
   const videoSchema = createVideoObjectSchema({

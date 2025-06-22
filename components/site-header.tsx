@@ -32,6 +32,15 @@ import {
   Book,
   ChevronDown,
   ShoppingCart,
+  MapPin,
+  Brain,
+  Calendar,
+  Route,
+  Camera,
+  Bot,
+  Globe,
+  User,
+  HelpCircle
 } from "lucide-react"
 // 사용자 메뉴 컴포넌트
 import { UserMenu } from "@/components/auth/user-menu"
@@ -59,24 +68,11 @@ import { LanguageSwitcher } from '@/components/language-switcher'
 
 /**
  * 사이트 헤더 컴포넌트
- * 전체 사이트의 상단 네비게이션 바를 렌더링합니다.
- * 
- * 주요 구성 요소:
- * - 로고 (미나 캐릭터 이미지 + 사이트명)
- * - 메인 네비게이션 메뉴 (소개, 브이로그, 가상여행 등)
- * - SNS 드롭다운 메뉴 (YouTube, Instagram, X, Blog, News)
- * - 장바구니 아이콘 (아이템 수 뱃지 포함)
- * - 팔로우 버튼
- * - 테마 토글 버튼 (라이트/다크 모드)
- * - 사용자 메뉴 (로그인/로그아웃)
- * 
- * 반응형 디자인:
- * - 모바일에서는 아이콘만 표시
- * - 데스크톱에서는 텍스트 + 아이콘 표시
- * 
- * 접근성:
- * - aria-label 속성으로 스크린 리더 지원
- * - 키보드 네비게이션 지원
+ * 새로운 메뉴 구조:
+ * 1. 인플루언서 미나 (브이로그, YouTube, Instagram, X, Blog, News)
+ * 2. 미나와 경주여행 (여행계획, 추천일정, 지도여행, 챗봇가이드, 가상여행, 사진엽서)
+ * 3. 지역상품
+ * 4. Q&A
  */
 export function SiteHeader() {
   const t = useTranslations('navigation')
@@ -84,64 +80,83 @@ export function SiteHeader() {
   const { items } = useCart()
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
-  const navigation = [
+  // 1. 인플루언서 미나 메뉴
+  const influencerMenuItems = [
     {
-      title: t('vlogs'),
+      title: "브이로그",
       href: "/vlogs",
-      description: "미나의 경주 여행 브이로그를 만나보세요"
+      description: "미나의 경주 여행 브이로그를 만나보세요",
+      icon: Video
     },
-    {
-      title: t('shop'),
-      href: "/shop",
-      description: "경주 특산품과 기념품을 만나보세요"
-    },
-    {
-      title: t('aiGuide'),
-      href: "/ai-guide",
-      description: "미나와 함께하는 실시간 여행 가이드"
-    },
-    {
-      title: t('photoPostcard'),
-      href: "/photo-postcard",
-      description: "AI로 만드는 특별한 경주 사진엽서"
-    },
-    {
-      title: t('virtualTravel'),
-      href: "/virtual-travel",
-      description: "집에서 즐기는 경주 가상 여행"
-    },
-    {
-      title: t('qa'),
-      href: "/qa",
-      description: "경주 여행에 대한 모든 궁금증을 해결해보세요"
-    }
-  ]
-
-  const snsLinks = [
     {
       title: "YouTube",
       href: "/sns/youtube",
-      description: "미나의 유튜브 채널"
+      description: "미나의 유튜브 채널",
+      icon: Youtube
     },
     {
       title: "Instagram",
       href: "/sns/instagram",
-      description: "미나의 인스타그램"
+      description: "미나의 인스타그램",
+      icon: Instagram
     },
     {
       title: "X (Twitter)",
       href: "/sns/x",
-      description: "미나의 X 계정"
+      description: "미나의 X 계정",
+      icon: Twitter
     },
     {
       title: "Blog",
       href: "/sns/blogspot",
-      description: "미나의 블로그"
+      description: "미나의 블로그",
+      icon: Rss
     },
     {
       title: "News",
       href: "/sns/news",
-      description: "미나 관련 뉴스"
+      description: "미나 관련 뉴스",
+      icon: Newspaper
+    }
+  ]
+
+  // 2. 미나와 경주여행 메뉴
+  const travelMenuItems = [
+    {
+      title: "여행계획",
+      href: "/ai-travel-planner",
+      description: "AI가 추천하는 맞춤형 여행 계획 수립",
+      icon: Calendar
+    },
+    {
+      title: "추천일정",
+      href: "/recommended-itinerary",
+      description: "생성된 여행 일정 확인 및 관리",
+      icon: Route
+    },
+    {
+      title: "지도여행",
+      href: "/map-travel",
+      description: "모든 관광지를 지도와 360도 뷰로 탐험",
+      icon: Map
+    },
+    {
+      title: "챗봇가이드",
+      href: "/ai-guide",
+      description: "미나와 함께하는 실시간 여행 가이드",
+      icon: Bot
+    },
+    {
+      title: "가상여행",
+      href: "/virtual-travel",
+      description: "집에서 즐기는 경주 가상 여행",
+      icon: Globe
+    },
+    {
+      title: "사진엽서",
+      href: "/photo-postcard",
+      description: "AI로 만드는 특별한 경주 사진엽서",
+      icon: Camera
     }
   ]
 
@@ -164,30 +179,45 @@ export function SiteHeader() {
         {/* 데스크톱 네비게이션 */}
         <NavigationMenu className="hidden md:flex">
           <NavigationMenuList>
+            {/* 1. 인플루언서 미나 */}
             <NavigationMenuItem>
-              <NavigationMenuTrigger>서비스</NavigationMenuTrigger>
+              <NavigationMenuTrigger className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                인플루언서 미나
+              </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-                  <li className="row-span-3">
+                <ul className="grid gap-3 p-6 md:w-[500px] lg:w-[600px] lg:grid-cols-[.75fr_1fr]">
+                  <li className="row-span-6">
                     <NavigationMenuLink asChild>
                       <Link
-                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-                        href="/"
+                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md relative overflow-hidden"
+                        href="/vlogs"
                       >
-                        <div className="mb-2 mt-4 text-lg font-medium">
-                          로컬루언서 미나
+                        {/* 과잠바 입은 미나의 반투명 배경 이미지 */}
+                        <div 
+                          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+                          style={{
+                            backgroundImage: 'url(/mina-casual.png)',
+                            backgroundPosition: 'center bottom'
+                          }}
+                        />
+                        <div className="relative z-10">
+                          <div className="mb-2 mt-4 text-lg font-medium">
+                            인플루언서 미나
+                          </div>
+                          <p className="text-sm leading-tight text-muted-foreground">
+                            경주의 매력을 전하는 AI 인플루언서 미나의 다양한 콘텐츠를 만나보세요
+                          </p>
                         </div>
-                        <p className="text-sm leading-tight text-muted-foreground">
-                          AI 인플루언서 미나와 함께하는 특별한 경주 여행 경험
-                        </p>
                       </Link>
                     </NavigationMenuLink>
                   </li>
-                  {navigation.slice(0, 3).map((item) => (
+                  {influencerMenuItems.map((item) => (
                     <ListItem
                       key={item.title}
                       title={item.title}
                       href={item.href}
+                      icon={item.icon}
                     >
                       {item.description}
                     </ListItem>
@@ -195,15 +225,21 @@ export function SiteHeader() {
                 </ul>
               </NavigationMenuContent>
             </NavigationMenuItem>
+
+            {/* 2. 미나와 경주여행 */}
             <NavigationMenuItem>
-              <NavigationMenuTrigger>더 보기</NavigationMenuTrigger>
+              <NavigationMenuTrigger className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                미나와 경주여행
+              </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                  {navigation.slice(3).map((item) => (
+                <ul className="grid gap-3 p-6 md:w-[600px] lg:w-[700px] lg:grid-cols-2">
+                  {travelMenuItems.map((item) => (
                     <ListItem
                       key={item.title}
                       title={item.title}
                       href={item.href}
+                      icon={item.icon}
                     >
                       {item.description}
                     </ListItem>
@@ -211,21 +247,31 @@ export function SiteHeader() {
                 </ul>
               </NavigationMenuContent>
             </NavigationMenuItem>
+
+            {/* 3. 지역상품 */}
             <NavigationMenuItem>
-              <NavigationMenuTrigger>SNS</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                  {snsLinks.map((item) => (
-                    <ListItem
-                      key={item.title}
-                      title={item.title}
-                      href={item.href}
-                    >
-                      {item.description}
-                    </ListItem>
-                  ))}
-                </ul>
-              </NavigationMenuContent>
+              <NavigationMenuLink asChild>
+                <Link 
+                  href="/shop"
+                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  지역상품
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+
+            {/* 4. Q&A */}
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link 
+                  href="/qa"
+                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Q&A
+                </Link>
+              </NavigationMenuLink>
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
@@ -264,30 +310,68 @@ export function SiteHeader() {
               <span className="font-bold">로컬루언서 미나</span>
             </Link>
             <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-              <div className="flex flex-col space-y-3">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className="text-sm font-medium transition-colors hover:text-primary"
-                  >
-                    {item.title}
-                  </Link>
-                ))}
-                <div className="pt-4">
-                  <p className="text-sm font-medium text-muted-foreground mb-2">SNS</p>
-                  {snsLinks.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className="block text-sm transition-colors hover:text-primary py-1"
-                    >
-                      {item.title}
-                    </Link>
-                  ))}
+              <div className="flex flex-col space-y-4">
+                {/* 모바일: 인플루언서 미나 */}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    인플루언서 미나
+                  </p>
+                  <div className="flex flex-col space-y-2 ml-6">
+                    {influencerMenuItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center space-x-2 text-sm transition-colors hover:text-primary"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
+
+                {/* 모바일: 미나와 경주여행 */}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    미나와 경주여행
+                  </p>
+                  <div className="flex flex-col space-y-2 ml-6">
+                    {travelMenuItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center space-x-2 text-sm transition-colors hover:text-primary"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 모바일: 지역상품 */}
+                <Link
+                  href="/shop"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>지역상품</span>
+                </Link>
+
+                {/* 모바일: Q&A */}
+                <Link
+                  href="/qa"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  <span>Q&A</span>
+                </Link>
               </div>
             </div>
           </SheetContent>
@@ -352,12 +436,14 @@ const ListItem = ({
   title,
   children,
   href,
+  icon: Icon,
   ...props
 }: {
   className?: string
   title: string
   children: React.ReactNode
   href: string
+  icon?: React.ComponentType<any>
 }) => {
   return (
     <li>
@@ -370,7 +456,10 @@ const ListItem = ({
           )}
           {...props}
         >
-          <div className="text-sm font-medium leading-none">{title}</div>
+          <div className="flex items-center space-x-2">
+            {Icon && <Icon className="h-4 w-4" />}
+            <div className="text-sm font-medium leading-none">{title}</div>
+          </div>
           <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
             {children}
           </p>

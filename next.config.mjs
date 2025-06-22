@@ -25,11 +25,12 @@ const nextConfig = {
     // 외부 이미지 도메인 허용
     domains: [
       'localhost',
-      'images.unsplash.com',
-      'picsum.photos',
-      'via.placeholder.com',
-      'fal.media',
-      'storage.googleapis.com'
+      'localuencer-mina.com',
+      'maps.googleapis.com',
+      'maps.gstatic.com',
+      'streetviewpixels-pa.googleapis.com',
+      'earth.google.com',
+      'www.gstatic.com'
     ],
     // 이미지 크기 설정
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -37,7 +38,12 @@ const nextConfig = {
     // 지연 로딩 기본 활성화
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
 
   // 압축 설정
@@ -74,26 +80,32 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          // XSS 보호
           {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block'
+            key: 'Content-Security-Policy',
+            value: `
+              default-src 'self';
+              script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://www.gstatic.com https://earth.google.com;
+              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+              font-src 'self' https://fonts.gstatic.com;
+              img-src 'self' data: blob: https: http:;
+              connect-src 'self' https://api.openai.com https://maps.googleapis.com https://earth.google.com;
+              frame-src 'self' https://www.google.com https://earth.google.com https://maps.google.com;
+              media-src 'self' blob: data:;
+              worker-src 'self' blob:;
+            `.replace(/\s+/g, ' ').trim()
           },
-          // 콘텐츠 타입 스니핑 방지
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
+          },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
           },
-          // 클릭재킹 방지
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY'
-          },
-          // 리퍼러 정책
           {
             key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
-          },
+            value: 'strict-origin-when-cross-origin'
+          }
         ],
       },
       // 정적 자산 캐싱
@@ -165,6 +177,14 @@ const nextConfig = {
 
   // 성능 모니터링
   productionBrowserSourceMaps: false,
+
+  // 국제화 설정
+  i18n: undefined, // next-intl을 사용하므로 비활성화
+
+  // 환경 변수 설정
+  env: {
+    CUSTOM_KEY: 'my-value',
+  },
 }
 
 export default withNextIntl(nextConfig)

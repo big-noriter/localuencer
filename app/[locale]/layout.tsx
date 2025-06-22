@@ -85,9 +85,9 @@ export function generateStaticParams() {
 export async function generateMetadata({
   params
 }: {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }): Promise<Metadata> {
-  const { locale } = params
+  const { locale } = await params
   const messages = await getMessages({ locale })
   
   const titles = {
@@ -159,12 +159,12 @@ export async function generateMetadata({
     },
     icons: {
       icon: [
-        { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-        { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+        { url: '/mina-hero.png', sizes: '192x192', type: 'image/png' },
+        { url: '/mina-hero.png', sizes: '512x512', type: 'image/png' },
       ],
       apple: [
-        { url: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
-        { url: '/icons/icon-180x180.png', sizes: '180x180', type: 'image/png' },
+        { url: '/mina-hero.png', sizes: '152x152', type: 'image/png' },
+        { url: '/mina-hero.png', sizes: '180x180', type: 'image/png' },
       ],
     },
   }
@@ -175,9 +175,9 @@ export default async function LocaleLayout({
   params
 }: {
   children: React.ReactNode
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }) {
-  const { locale } = params
+  const { locale } = await params
   
   // 지원하지 않는 언어인 경우 404 처리
   if (!locales.includes(locale as any)) {
@@ -191,33 +191,28 @@ export default async function LocaleLayout({
   const baseSchemas = getBaseSchemas(locale)
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <head>
-        <SchemaOrg schema={baseSchemas} />
-      </head>
-      <body className={inter.className}>
-        <NextIntlClientProvider messages={messages} locale={locale}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AuthProvider>
-              <NotificationProvider>
-                <PWAProvider>
-                  <div className="relative flex min-h-screen flex-col">
-                    <SiteHeader />
-                    <main className="flex-1">{children}</main>
-                    <SiteFooter />
-                  </div>
-                  <Toaster />
-                </PWAProvider>
-              </NotificationProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages} locale={locale}>
+      <SchemaOrg schema={baseSchemas} />
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem={false}
+        disableTransitionOnChange
+        suppressHydrationWarning
+      >
+        <AuthProvider>
+          <NotificationProvider>
+            <PWAProvider>
+              <div className="relative flex min-h-screen flex-col">
+                <SiteHeader />
+                <main className="flex-1">{children}</main>
+                <SiteFooter />
+              </div>
+              <Toaster />
+            </PWAProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </NextIntlClientProvider>
   )
 } 

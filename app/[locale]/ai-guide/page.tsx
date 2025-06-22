@@ -8,6 +8,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Slider } from "@/components/ui/slider"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { 
   Sparkles, 
   MessageSquare, 
@@ -31,7 +35,12 @@ import {
   Compass,
   Camera,
   AlertTriangle,
-  Settings
+  Settings,
+  Play,
+  Pause,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { toast } from "sonner"
 import GoogleMaps from "@/components/maps/google-maps"
@@ -58,6 +67,17 @@ interface WebRTCState {
 }
 
 /**
+ * 음성 설정 인터페이스
+ */
+interface VoiceSettings {
+  rate: number      // 속도 (0.1 - 2.0)
+  pitch: number     // 음높이 (0.0 - 2.0)
+  volume: number    // 음량 (0.0 - 1.0)
+  voice: string     // 음성 종류
+  autoPlay: boolean // 자동 재생 여부
+}
+
+/**
  * AI 가이드 실시간 채팅 페이지
  * OpenAI API를 활용한 텍스트/음성 채팅과 WebRTC 화상 통화 기능 제공
  * Google Maps 연동으로 지도 기반 가이드 서비스 추가
@@ -68,7 +88,7 @@ export default function AiGuidePage() {
     {
       id: '1',
       role: 'assistant',
-      content: '안녕하세요! 저는 경주 전문 가이드 미나예요 😊 경주 여행에 대해 궁금한 것이 있으시면 언제든 물어보세요! 지도에서 관광지를 클릭하시면 더 자세한 정보를 알려드릴게요!',
+      content: '안녕하세요! 저는 경주 전문 가이드 미나예요 😊\n\n경주 여행에 대해 궁금한 것이 있으시면 언제든 물어보세요!\n\n🗺️ 지도에서 관광지를 클릭하시면 더 자세한 정보를 알려드릴게요!\n🎤 음성으로도 질문하실 수 있어요!',
       timestamp: new Date(),
       type: 'text'
     }
@@ -80,6 +100,24 @@ export default function AiGuidePage() {
   const [isRecording, setIsRecording] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
+  const [isListening, setIsListening] = useState(false)
+
+  // 음성 설정
+  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
+    rate: 1.2,        // 조금 빠르게
+    pitch: 1.3,       // 조금 높게 (젊은 여성 목소리)
+    volume: 0.8,      // 적당한 음량
+    voice: '',        // 기본 음성
+    autoPlay: false   // 자동 재생 비활성화
+  })
+
+  // TTS 상태
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null)
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
+
+  // UI 상태
+  const [isVoiceSettingsOpen, setIsVoiceSettingsOpen] = useState(false)
 
   // WebRTC 상태
   const [webrtcState, setWebrtcState] = useState<WebRTCState>({
@@ -98,6 +136,7 @@ export default function AiGuidePage() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   /**
    * 메시지 스크롤을 맨 아래로 이동
@@ -111,6 +150,95 @@ export default function AiGuidePage() {
   }, [messages])
 
   /**
+   * 음성 합성 초기화 및 음성 목록 로드
+   */
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = speechSynthesis.getVoices()
+      setAvailableVoices(voices)
+      
+      if (voices.length > 0 && !voiceSettings.voice) {
+        // 한국어 여성 음성 우선 선택
+        const koreanFemaleVoice = voices.find(voice => 
+          voice.lang.includes('ko') && (
+            voice.name.includes('Female') || 
+            voice.name.includes('여성') ||
+            voice.name.includes('Yuna') ||
+            voice.name.includes('Sora')
+          )
+        )
+        
+        const koreanVoice = koreanFemaleVoice || voices.find(voice => voice.lang.includes('ko'))
+        
+        if (koreanVoice) {
+          setVoiceSettings(prev => ({ ...prev, voice: koreanVoice.name }))
+        }
+      }
+    }
+
+    loadVoices()
+    speechSynthesis.onvoiceschanged = loadVoices
+  }, [])
+
+  /**
+   * 마크다운 및 특수 문자 제거 함수
+   */
+  const cleanTextForSpeech = (text: string): string => {
+    return text
+      // 마크다운 헤더 제거 (# ## ### 등)
+      .replace(/#{1,6}\s*/g, '')
+      // 마크다운 강조 제거 (**bold**, *italic*, __underline__)
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/__(.*?)__/g, '$1')
+      .replace(/_(.*?)_/g, '$1')
+      // 마크다운 링크 제거 [text](url)
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // 마크다운 코드 블록 제거
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      // 마크다운 리스트 마커 제거
+      .replace(/^[\s]*[-*+]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      // HTML 태그 제거
+      .replace(/<[^>]*>/g, '')
+      // 특수 문자 정리
+      .replace(/[#*_`~\[\](){}]/g, '')
+      // 연속된 공백 정리
+      .replace(/\s+/g, ' ')
+      // 앞뒤 공백 제거
+      .trim()
+  }
+
+  /**
+   * 마이크 권한 및 디바이스 확인
+   */
+  const checkMicrophoneAccess = async (): Promise<boolean> => {
+    try {
+      const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+      
+      if (permissionStatus.state === 'denied') {
+        toast.error('마이크 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.')
+        return false
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const hasAudioInput = devices.some(device => device.kind === 'audioinput')
+      
+      if (!hasAudioInput) {
+        toast.error('마이크 장치를 찾을 수 없습니다.')
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('마이크 접근 확인 오류:', error)
+      toast.error('마이크 접근 권한을 확인할 수 없습니다.')
+      return false
+    }
+  }
+
+  /**
    * 텍스트 메시지 전송
    */
   const sendMessage = async () => {
@@ -119,7 +247,7 @@ export default function AiGuidePage() {
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputMessage,
+      content: inputMessage.trim(),
       timestamp: new Date(),
       type: 'text'
     }
@@ -129,14 +257,13 @@ export default function AiGuidePage() {
     setIsLoading(true)
 
     try {
-      // AI 가이드 API 호출
       const response = await fetch('/api/ai-guide', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: inputMessage,
+          message: inputMessage.trim(),
           conversationHistory: messages.map(msg => ({
             role: msg.role,
             content: msg.content
@@ -161,18 +288,13 @@ export default function AiGuidePage() {
 
         setMessages(prev => [...prev, aiMessage])
 
-        // 개발 모드 알림
         if (result.isDevelopmentMode) {
           toast.info("개발 환경에서는 목업 응답을 제공합니다.")
         }
 
-        // TTS 음성 재생 (선택적)
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(result.message)
-          utterance.lang = 'ko-KR'
-          utterance.rate = 0.9
-          utterance.pitch = 1.1
-          // speechSynthesis.speak(utterance) // 자동 재생 비활성화
+        // 자동 재생이 켜져있으면 음성 재생
+        if (voiceSettings.autoPlay) {
+          setTimeout(() => speakMessage(result.message), 500)
         }
       }
 
@@ -181,7 +303,70 @@ export default function AiGuidePage() {
       toast.error('메시지 전송에 실패했습니다.')
     } finally {
       setIsLoading(false)
+      inputRef.current?.focus()
     }
+  }
+
+  /**
+   * 음성 재생 (마크다운 제거 버전)
+   */
+  const speakMessage = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      toast.error('이 브라우저는 음성 합성을 지원하지 않습니다.')
+      return
+    }
+
+    // 기존 음성 중지
+    if (isSpeaking) {
+      speechSynthesis.cancel()
+      setIsSpeaking(false)
+      setCurrentUtterance(null)
+      return
+    }
+
+    // 마크다운 및 특수문자 제거
+    const cleanText = cleanTextForSpeech(text)
+    
+    if (!cleanText.trim()) {
+      toast.warning('읽을 내용이 없습니다.')
+      return
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    
+    // 음성 설정 적용
+    utterance.rate = voiceSettings.rate
+    utterance.pitch = voiceSettings.pitch
+    utterance.volume = voiceSettings.volume
+    utterance.lang = 'ko-KR'
+
+    // 선택된 음성 적용
+    if (voiceSettings.voice) {
+      const selectedVoice = availableVoices.find(voice => voice.name === voiceSettings.voice)
+      if (selectedVoice) {
+        utterance.voice = selectedVoice
+      }
+    }
+
+    // 이벤트 리스너
+    utterance.onstart = () => {
+      setIsSpeaking(true)
+      setCurrentUtterance(utterance)
+    }
+
+    utterance.onend = () => {
+      setIsSpeaking(false)
+      setCurrentUtterance(null)
+    }
+
+    utterance.onerror = (event) => {
+      console.error('음성 합성 오류:', event)
+      setIsSpeaking(false)
+      setCurrentUtterance(null)
+      toast.error('음성 재생에 실패했습니다.')
+    }
+
+    speechSynthesis.speak(utterance)
   }
 
   /**
@@ -189,66 +374,94 @@ export default function AiGuidePage() {
    */
   const toggleRecording = async () => {
     if (isRecording) {
-      // 녹음 중지
-      if (mediaRecorder) {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop()
         setIsRecording(false)
+        setIsListening(false)
+        toast.info("음성 녹음을 중지하고 처리 중입니다...")
       }
-    } else {
-      // 녹음 시작
-      try {
-        // 먼저 마이크 권한 확인
-        const permissionStatus = await checkMediaPermissions();
-        
-        if (!permissionStatus.audio) {
-          // 마이크 권한이 없는 경우 사용자에게 안내
-          showPermissionInstructions({ video: true, audio: false });
-          return;
-        }
-        
-        // 사용 가능한 마이크 확인
-        const devices = await listMediaDevices();
-        if (!devices.hasMicrophone) {
-          toast.error('마이크 장치를 찾을 수 없습니다.');
-          return;
-        }
+      return
+    }
 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        const recorder = new MediaRecorder(stream)
+    try {
+      const hasAccess = await checkMicrophoneAccess()
+      if (!hasAccess) return
+
+      setIsListening(true)
+      toast.info("마이크 접근 권한을 요청합니다...")
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100
+        }
+      })
+
+      const options: MediaRecorderOptions = {
+        mimeType: 'audio/webm;codecs=opus'
+      }
+
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'audio/webm'
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options.mimeType = 'audio/mp4'
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, options)
+      const chunks: Blob[] = []
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data)
+        }
+      }
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: recorder.mimeType })
+        await processVoiceMessage(audioBlob)
         
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            setAudioChunks(prev => [...prev, event.data])
-          }
-        }
+        stream.getTracks().forEach(track => track.stop())
+        setIsListening(false)
+      }
 
-        recorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
-          await processVoiceMessage(audioBlob)
-          setAudioChunks([])
-          
-          // 스트림 정리
-          stream.getTracks().forEach(track => track.stop())
-        }
+      recorder.onerror = (event) => {
+        console.error('MediaRecorder 오류:', event)
+        toast.error('음성 녹음 중 오류가 발생했습니다.')
+        setIsRecording(false)
+        setIsListening(false)
+        stream.getTracks().forEach(track => track.stop())
+      }
 
-        recorder.start()
-        setMediaRecorder(recorder)
-        setIsRecording(true)
-        toast.info("음성 녹음을 시작합니다. 다시 클릭하면 전송됩니다.")
+      recorder.start(1000)
+      setMediaRecorder(recorder)
+      setIsRecording(true)
+      setIsListening(false)
+      
+      toast.success("🎤 음성 녹음을 시작합니다. 다시 클릭하면 전송됩니다.")
 
-      } catch (error: any) {
-        console.error('음성 녹음 오류:', error)
-        
-        // 더 구체적인 오류 메시지 제공
-        if (error.name === 'NotAllowedError') {
-          toast.error('마이크 접근 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.');
-        } else if (error.name === 'NotFoundError') {
-          toast.error('마이크를 찾을 수 없습니다. 장치가 연결되어 있는지 확인해주세요.');
-        } else if (error.name === 'NotReadableError') {
-          toast.error('마이크에 접근할 수 없습니다. 다른 앱에서 사용 중인지 확인해주세요.');
-        } else {
-          toast.error('음성 녹음 시작에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
-        }
+    } catch (error: any) {
+      console.error('음성 녹음 시작 오류:', error)
+      setIsRecording(false)
+      setIsListening(false)
+      
+      switch (error.name) {
+        case 'NotAllowedError':
+          toast.error('🚫 마이크 접근 권한이 거부되었습니다.\n브라우저 주소창 옆의 🔒 아이콘을 클릭하여 마이크 권한을 허용해주세요.')
+          break
+        case 'NotFoundError':
+          toast.error('🎤 마이크를 찾을 수 없습니다.\n마이크가 연결되어 있는지 확인해주세요.')
+          break
+        case 'NotReadableError':
+          toast.error('🔧 마이크에 접근할 수 없습니다.\n다른 앱에서 마이크를 사용 중인지 확인해주세요.')
+          break
+        case 'OverconstrainedError':
+          toast.error('⚙️ 마이크 설정에 문제가 있습니다.\n다른 마이크를 시도해보세요.')
+          break
+        default:
+          toast.error(`❌ 음성 녹음 시작 실패: ${error.message || '알 수 없는 오류'}`)
       }
     }
   }
@@ -260,9 +473,10 @@ export default function AiGuidePage() {
     setIsLoading(true)
 
     try {
-      // STT (Speech to Text)
       const formData = new FormData()
       formData.append('audio', audioBlob, 'voice.wav')
+
+      toast.info("🔄 음성을 텍스트로 변환 중...")
 
       const sttResponse = await fetch('/api/ai-guide', {
         method: 'PUT',
@@ -275,26 +489,26 @@ export default function AiGuidePage() {
 
       const sttResult = await sttResponse.json()
 
-      if (sttResult.success) {
-        // 음성으로 인식된 텍스트를 메시지로 전송
+      if (sttResult.success && sttResult.text.trim()) {
         const userMessage: ChatMessage = {
           id: Date.now().toString(),
           role: 'user',
-          content: sttResult.text,
+          content: sttResult.text.trim(),
           timestamp: new Date(),
           type: 'voice'
         }
 
         setMessages(prev => [...prev, userMessage])
         
-        // AI 응답 요청
+        toast.success(`🎯 음성 인식 완료: "${sttResult.text.slice(0, 30)}${sttResult.text.length > 30 ? '...' : ''}"`)
+        
         const chatResponse = await fetch('/api/ai-guide', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            message: sttResult.text,
+            message: sttResult.text.trim(),
             conversationHistory: messages.map(msg => ({
               role: msg.role,
               content: msg.content
@@ -316,20 +530,17 @@ export default function AiGuidePage() {
 
             setMessages(prev => [...prev, aiMessage])
 
-            // 음성으로 응답 재생
-            if ('speechSynthesis' in window) {
-              const utterance = new SpeechSynthesisUtterance(chatResult.message)
-              utterance.lang = 'ko-KR'
-              utterance.rate = 0.9
-              utterance.pitch = 1.1
-              speechSynthesis.speak(utterance)
+            if (voiceSettings.autoPlay) {
+              setTimeout(() => speakMessage(chatResult.message), 500)
             }
           }
         }
 
         if (sttResult.isDevelopmentMode) {
-          toast.info("개발 환경에서는 목업 음성 인식을 제공합니다.")
+          toast.info("🔧 개발 환경에서는 목업 음성 인식을 제공합니다.")
         }
+      } else {
+        toast.warning("🤔 음성을 인식하지 못했습니다. 다시 시도해주세요.")
       }
 
     } catch (error) {
@@ -337,241 +548,6 @@ export default function AiGuidePage() {
       toast.error('음성 메시지 처리에 실패했습니다.')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  /**
-   * WebRTC 화상 통화 시작
-   */
-  const startVideoCall = async () => {
-    try {
-      // 먼저 디바이스 권한 상태 확인
-      const permissionStatus = await checkMediaPermissions();
-      
-      if (!permissionStatus.video || !permissionStatus.audio) {
-        // 권한이 없는 경우 사용자에게 안내
-        showPermissionInstructions(permissionStatus);
-        return;
-      }
-
-      // 사용 가능한 디바이스 확인
-      const devices = await listMediaDevices();
-      if (!devices.hasCamera || !devices.hasMicrophone) {
-        toast.error(`${!devices.hasCamera ? '카메라' : ''}${!devices.hasCamera && !devices.hasMicrophone ? '와 ' : ''}${!devices.hasMicrophone ? '마이크' : ''} 장치를 찾을 수 없습니다.`);
-        return;
-      }
-
-      // 권한이 있고 디바이스가 있는 경우 미디어 스트림 요청
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
-      
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        
-        // 비디오 요소에 로드 이벤트 리스너 추가
-        localVideoRef.current.onloadedmetadata = () => {
-          if (localVideoRef.current) {
-            localVideoRef.current.play().catch(e => {
-              console.error('비디오 재생 오류:', e);
-              toast.error('비디오 재생에 실패했습니다. 브라우저 설정을 확인해주세요.');
-            });
-          }
-        };
-      }
-
-      setWebrtcState(prev => ({
-        ...prev,
-        isConnected: true,
-        isVideoEnabled: true,
-        isAudioEnabled: true
-      }));
-
-      toast.success("화상 통화가 시작되었습니다!");
-      
-      // 실제 WebRTC 연결 로직은 여기에 구현
-      // 현재는 로컬 비디오만 표시
-
-    } catch (error: any) {
-      console.error('화상 통화 시작 오류:', error);
-      
-      // 더 구체적인 오류 메시지 제공
-      if (error.name === 'NotAllowedError') {
-        toast.error('카메라/마이크 접근 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.');
-      } else if (error.name === 'NotFoundError') {
-        toast.error('카메라 또는 마이크를 찾을 수 없습니다. 장치가 연결되어 있는지 확인해주세요.');
-      } else if (error.name === 'NotReadableError') {
-        toast.error('카메라/마이크에 접근할 수 없습니다. 다른 앱에서 사용 중인지 확인해주세요.');
-      } else {
-        toast.error('화상 통화 시작에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
-      }
-    }
-  };
-
-  /**
-   * 미디어 장치 권한 상태 확인
-   */
-  const checkMediaPermissions = async () => {
-    const result = { video: false, audio: false };
-    
-    try {
-      // 권한 상태 확인 (navigator.permissions API 사용)
-      if (navigator.permissions) {
-        // 카메라 권한 확인
-        try {
-          const cameraPermission = await navigator.permissions.query({ name: 'camera' as PermissionName });
-          result.video = cameraPermission.state === 'granted';
-        } catch (e) {
-          console.log('카메라 권한 확인 불가:', e);
-        }
-        
-        // 마이크 권한 확인
-        try {
-          const micPermission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-          result.audio = micPermission.state === 'granted';
-        } catch (e) {
-          console.log('마이크 권한 확인 불가:', e);
-        }
-      }
-      
-      // permissions API가 지원되지 않거나 권한이 없는 경우, getUserMedia로 권한 요청 시도
-      if (!result.video || !result.audio) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: !result.video, 
-            audio: !result.audio 
-          });
-          
-          // 스트림을 얻었다면 권한이 있는 것
-          if (!result.video) result.video = true;
-          if (!result.audio) result.audio = true;
-          
-          // 테스트용 스트림 정리
-          stream.getTracks().forEach(track => track.stop());
-        } catch (e) {
-          // 권한 요청 실패 - 상태는 이미 false로 설정되어 있음
-          console.log('미디어 권한 요청 실패:', e);
-        }
-      }
-    } catch (e) {
-      console.error('권한 확인 중 오류:', e);
-    }
-    
-    return result;
-  };
-
-  /**
-   * 사용 가능한 미디어 장치 확인
-   */
-  const listMediaDevices = async () => {
-    const result = { hasCamera: false, hasMicrophone: false };
-    
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        console.log('미디어 장치 목록을 지원하지 않는 브라우저입니다.');
-        return result;
-      }
-      
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      
-      result.hasCamera = devices.some(device => device.kind === 'videoinput');
-      result.hasMicrophone = devices.some(device => device.kind === 'audioinput');
-      
-    } catch (e) {
-      console.error('미디어 장치 목록 조회 오류:', e);
-    }
-    
-    return result;
-  };
-
-  /**
-   * 권한 설정 안내 표시
-   */
-  const showPermissionInstructions = (permissions: { video: boolean; audio: boolean }) => {
-    const missingPermissions = [];
-    if (!permissions.video) missingPermissions.push('카메라');
-    if (!permissions.audio) missingPermissions.push('마이크');
-    
-    toast.error(
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
-          <span className="font-medium">{missingPermissions.join('/')} 접근 권한이 필요합니다</span>
-        </div>
-        <ul className="text-sm space-y-1 list-disc pl-5">
-          <li>브라우저의 주소 표시줄에서 권한 설정을 확인하세요</li>
-          <li>Windows 설정 &gt; 개인 정보 &gt; 카메라/마이크에서 권한을 확인하세요</li>
-          <li>다른 앱에서 카메라/마이크를 사용 중인지 확인하세요</li>
-          <li>장치가 올바르게 연결되어 있는지 확인하세요</li>
-        </ul>
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="w-full mt-1"
-          onClick={() => {
-            window.open('ms-settings:privacy-webcam', '_blank');
-            setTimeout(() => window.open('ms-settings:privacy-microphone', '_blank'), 500);
-          }}
-        >
-          <Settings className="mr-2 h-4 w-4" />
-          Windows 권한 설정 열기
-        </Button>
-      </div>
-    , { duration: 10000 });
-  };
-
-  /**
-   * WebRTC 화상 통화 종료
-   */
-  const endVideoCall = () => {
-    if (localVideoRef.current?.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream
-      stream.getTracks().forEach(track => track.stop())
-      localVideoRef.current.srcObject = null
-    }
-
-    setWebrtcState({
-      isConnected: false,
-      isVideoEnabled: false,
-      isAudioEnabled: false,
-      isMuted: false
-    })
-
-    toast.info("화상 통화가 종료되었습니다.")
-  }
-
-  /**
-   * 비디오 토글
-   */
-  const toggleVideo = () => {
-    if (localVideoRef.current?.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream
-      const videoTrack = stream.getVideoTracks()[0]
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled
-        setWebrtcState(prev => ({
-          ...prev,
-          isVideoEnabled: videoTrack.enabled
-        }))
-      }
-    }
-  }
-
-  /**
-   * 오디오 토글
-   */
-  const toggleAudio = () => {
-    if (localVideoRef.current?.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream
-      const audioTrack = stream.getAudioTracks()[0]
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled
-        setWebrtcState(prev => ({
-          ...prev,
-          isMuted: !audioTrack.enabled
-        }))
-      }
     }
   }
 
@@ -591,430 +567,360 @@ export default function AiGuidePage() {
   const handleAttractionSelect = (attraction: any) => {
     setSelectedAttraction(attraction.id)
     
-    // AI에게 해당 관광지에 대한 정보 요청
     const attractionMessage = `${attraction.name}에 대해 자세히 알려주세요.`
     setInputMessage(attractionMessage)
     
-    // 채팅 탭으로 전환
     setActiveTab('chat')
     
-    // 자동으로 메시지 전송
     setTimeout(() => {
       sendMessage()
     }, 100)
   }
 
+  /**
+   * 메시지 포맷팅
+   */
+  const formatMessage = (content: string) => {
+    return content.split('\n').map((line, index) => (
+      <span key={index}>
+        {line}
+        {index < content.split('\n').length - 1 && <br />}
+      </span>
+    ))
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center space-x-3">
-        <Sparkles className="h-8 w-8 text-primary" />
-        <h1 className="text-4xl font-bold">미나의 경주 AI 여행 가이드</h1>
-      </div>
-      <p className="text-lg text-muted-foreground">
-        경주 여행 계획부터 현지 정보까지, 미나가 여러분의 스마트한 여행 동반자가 되어 드립니다. 실시간 음성/화상
-        채팅으로 궁금증을 해결하고, 지도에서 관광지를 확인하며 맞춤형 경주 여행 추천을 받아보세요!
-      </p>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-6xl pb-24">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            AI 가이드 미나
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            경주 여행의 모든 것을 미나와 함께 알아보세요! 🏛️✨
+          </p>
+        </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="chat" className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4" />
-            AI 채팅
-          </TabsTrigger>
-          <TabsTrigger value="video" className="flex items-center gap-2">
-            <Video className="w-4 h-4" />
-            화상 통화
-          </TabsTrigger>
-          <TabsTrigger value="map" className="flex items-center gap-2">
-            <Map className="w-4 h-4" />
-            지도 가이드
-          </TabsTrigger>
-        </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              채팅
+            </TabsTrigger>
+            <TabsTrigger value="video" className="flex items-center gap-2">
+              <Video className="w-4 h-4" />
+              화상 채팅
+            </TabsTrigger>
+            <TabsTrigger value="map" className="flex items-center gap-2">
+              <Map className="w-4 h-4" />
+              지도
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="chat" className="space-y-6">
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* 실시간 채팅 영역 */}
+          <TabsContent value="chat" className="space-y-6">
+            {/* 채팅 영역 */}
+            <Card className="flex flex-col">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Sparkles className="mr-2 h-6 w-6 text-primary" />
+                    미나와 채팅
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={isLoading ? "secondary" : "default"}>
+                      {isLoading ? "응답 중..." : "온라인"}
+                    </Badge>
+                    {isSpeaking && (
+                      <Badge variant="outline" className="animate-pulse">
+                        🔊 음성 재생 중
+                      </Badge>
+                    )}
+                  </div>
+                </CardTitle>
+                <CardDescription>
+                  텍스트나 음성으로 경주 여행에 대해 무엇이든 물어보세요!
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="flex flex-col p-0">
+                {/* 음성 설정 (접을 수 있는 형태) */}
+                <div className="px-6 pb-4 border-b">
+                  <Collapsible open={isVoiceSettingsOpen} onOpenChange={setIsVoiceSettingsOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-between">
+                        <span className="flex items-center gap-2">
+                          <Volume2 className="w-4 h-4" />
+                          음성 설정
+                        </span>
+                        {isVoiceSettingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-4 mt-4">
+                      {/* 컴팩트한 음성 설정 */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs">속도: {voiceSettings.rate.toFixed(1)}x</Label>
+                          <Slider
+                            value={[voiceSettings.rate]}
+                            onValueChange={([value]) => setVoiceSettings(prev => ({ ...prev, rate: value }))}
+                            min={0.5}
+                            max={2.0}
+                            step={0.1}
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">음높이: {voiceSettings.pitch.toFixed(1)}</Label>
+                          <Slider
+                            value={[voiceSettings.pitch]}
+                            onValueChange={([value]) => setVoiceSettings(prev => ({ ...prev, pitch: value }))}
+                            min={0.5}
+                            max={2.0}
+                            step={0.1}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-xs">음성 선택</Label>
+                        <Select value={voiceSettings.voice} onValueChange={(value) => setVoiceSettings(prev => ({ ...prev, voice: value }))}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="음성을 선택하세요" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableVoices.filter(voice => voice.lang.includes('ko')).map((voice) => (
+                              <SelectItem key={voice.name} value={voice.name}>
+                                {voice.name} ({voice.lang})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">자동 재생</Label>
+                        <Button
+                          variant={voiceSettings.autoPlay ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setVoiceSettings(prev => ({ ...prev, autoPlay: !prev.autoPlay }))}
+                        >
+                          {voiceSettings.autoPlay ? "켜짐" : "꺼짐"}
+                        </Button>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+
+                {/* 메시지 영역 */}
+                <div className="relative">
+                  <ScrollArea className="h-[60vh] min-h-[400px] max-h-[600px] px-6">
+                    <div className="space-y-6 pb-4">
+                      {messages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`flex items-start space-x-3 max-w-[85%] ${
+                            message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                          }`}>
+                            <Avatar className="w-10 h-10 flex-shrink-0">
+                              {message.role === 'assistant' ? (
+                                <>
+                                  <AvatarImage src="/mina-active.png" alt="미나" />
+                                  <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-400 text-white">
+                                    미나
+                                  </AvatarFallback>
+                                </>
+                              ) : (
+                                <>
+                                  <AvatarImage src="/placeholder-user.jpg" alt="사용자" />
+                                  <AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white">
+                                    <User className="w-5 h-5" />
+                                  </AvatarFallback>
+                                </>
+                              )}
+                            </Avatar>
+                            
+                            <div className="flex flex-col space-y-2">
+                              {/* 시간과 플레이 버튼을 메시지 위쪽으로 이동 */}
+                              <div className={`flex items-center gap-2 text-xs text-muted-foreground ${
+                                message.role === 'user' ? 'justify-end' : 'justify-start'
+                              }`}>
+                                <span>
+                                  {message.timestamp.toLocaleTimeString('ko-KR', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  })}
+                                </span>
+                                {message.type === 'voice' && (
+                                  <Badge variant="outline" className="h-5 px-1.5">
+                                    <Volume2 className="w-3 h-3 mr-1" />
+                                    음성
+                                  </Badge>
+                                )}
+                                {message.role === 'assistant' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs hover:bg-accent"
+                                    onClick={() => speakMessage(message.content)}
+                                    disabled={isLoading}
+                                  >
+                                    {isSpeaking && currentUtterance ? (
+                                      <Pause className="w-3 h-3" />
+                                    ) : (
+                                      <Play className="w-3 h-3" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                              
+                              <div className={`rounded-2xl px-4 py-3 shadow-sm ${
+                                message.role === 'user' 
+                                  ? 'bg-primary text-primary-foreground ml-auto' 
+                                  : 'bg-muted'
+                              }`}>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                  {formatMessage(message.content)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {isLoading && (
+                        <div className="flex justify-start">
+                          <div className="flex items-start space-x-3">
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage src="/mina-active.png" alt="미나" />
+                              <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-400 text-white">
+                                미나
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="bg-muted rounded-2xl px-4 py-3 shadow-sm">
+                              <div className="flex items-center space-x-2">
+                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                <span className="text-sm text-muted-foreground">
+                                  미나가 답변을 준비하고 있어요...
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                {/* 입력 영역 */}
+                <div className="border-t bg-background/95 backdrop-blur-sm p-4 sticky bottom-0">
+                  <div className="flex items-end space-x-2">
+                    <div className="flex-1">
+                      <Input
+                        ref={inputRef}
+                        placeholder="경주에 대해 궁금한 것을 물어보세요... (Enter로 전송)"
+                        value={inputMessage}
+                        onChange={(e) => setInputMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        disabled={isLoading}
+                        className="resize-none min-h-[44px] bg-background"
+                      />
+                    </div>
+                    
+                    <Button
+                      onClick={toggleRecording}
+                      variant={isRecording ? "destructive" : "outline"}
+                      size="icon"
+                      disabled={isLoading || isListening}
+                      className={`h-[44px] w-[44px] ${isRecording ? 'animate-pulse' : ''}`}
+                    >
+                      {isListening ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isRecording ? (
+                        <MicOff className="w-4 h-4" />
+                      ) : (
+                        <Mic className="w-4 h-4" />
+                      )}
+                    </Button>
+                    
+                    <Button 
+                      onClick={sendMessage} 
+                      disabled={!inputMessage.trim() || isLoading}
+                      className="h-[44px] px-6"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      전송
+                    </Button>
+                  </div>
+                  
+                  {isRecording && (
+                    <div className="mt-2 text-center">
+                      <Badge variant="destructive" className="animate-pulse">
+                        🎤 녹음 중... 다시 클릭하면 전송됩니다
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="video" className="space-y-6">
+            {/* 화상 통화 영역 */}
             <Card className="h-[600px] flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center">
-                    <MessageSquare className="mr-2 h-6 w-6 text-primary" />
-                    실시간 AI 채팅
+                    <Video className="mr-2 h-6 w-6 text-primary" />
+                    화상 통화
                   </span>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
-                    온라인
+                  <Badge variant={webrtcState.isConnected ? "default" : "secondary"}>
+                    {webrtcState.isConnected ? "연결됨" : "대기중"}
                   </Badge>
                 </CardTitle>
-                <CardDescription>미나와 텍스트 또는 음성으로 대화하세요.</CardDescription>
+                <CardDescription>미나와 화상으로 대화하며 경주 여행 정보를 얻으세요.</CardDescription>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
-                {/* 메시지 영역 */}
-                <ScrollArea className="flex-1 pr-4">
-                  <div className="space-y-4">
-                    {messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`flex items-start space-x-2 max-w-[80%] ${
-                          message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                        }`}>
-                          <Avatar className="w-8 h-8">
-                            {message.role === 'assistant' ? (
-                              <>
-                                <AvatarImage src="/mina-active.png" alt="미나" />
-                                <AvatarFallback>미나</AvatarFallback>
-                              </>
-                            ) : (
-                              <>
-                                <AvatarImage src="/placeholder-user.jpg" alt="사용자" />
-                                <AvatarFallback><User className="w-4 h-4" /></AvatarFallback>
-                              </>
-                            )}
-                          </Avatar>
-                          <div className={`rounded-lg p-3 ${
-                            message.role === 'user' 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-muted'
-                          }`}>
-                            <p className="text-sm">{message.content}</p>
-                            <div className="flex items-center mt-1 space-x-1">
-                              <span className="text-xs opacity-70">
-                                {message.timestamp.toLocaleTimeString('ko-KR', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </span>
-                              {message.type === 'voice' && (
-                                <Volume2 className="w-3 h-3 opacity-70" />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {isLoading && (
-                      <div className="flex justify-start">
-                        <div className="flex items-start space-x-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src="/mina-active.png" alt="미나" />
-                            <AvatarFallback>미나</AvatarFallback>
-                          </Avatar>
-                          <div className="bg-muted rounded-lg p-3">
-                            <div className="flex items-center space-x-2">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span className="text-sm">미나가 답변을 준비하고 있어요...</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </ScrollArea>
-
-                {/* 입력 영역 */}
-                <div className="flex items-center space-x-2 pt-4 border-t">
-                  <Input
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="경주 여행에 대해 궁금한 것을 물어보세요..."
-                    disabled={isLoading}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={toggleRecording}
-                    variant={isRecording ? "destructive" : "outline"}
-                    size="icon"
-                    disabled={isLoading}
-                  >
-                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </Button>
-                  <Button
-                    onClick={sendMessage}
-                    disabled={!inputMessage.trim() || isLoading}
-                    size="icon"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 빠른 질문 및 추천 */}
-            <Card className="h-[600px] flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Compass className="mr-2 h-6 w-6 text-primary" />
-                  빠른 질문 & 추천
-                </CardTitle>
-                <CardDescription>자주 묻는 질문이나 추천 코스를 선택해보세요.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">🏛️ 역사 유적지</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("불국사와 석굴암을 하루에 둘 다 볼 수 있나요?")}
-                      >
-                        불국사와 석굴암을 하루에 둘 다 볼 수 있나요?
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("첨성대와 대릉원 관람 시간은 얼마나 걸리나요?")}
-                      >
-                        첨성대와 대릉원 관람 시간은 얼마나 걸리나요?
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">🍽️ 맛집 & 음식</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("경주 대표 음식과 맛집을 추천해주세요")}
-                      >
-                        경주 대표 음식과 맛집을 추천해주세요
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("황남빵은 어디서 사는 게 가장 좋나요?")}
-                      >
-                        황남빵은 어디서 사는 게 가장 좋나요?
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">🚗 교통 & 이동</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("경주 시내 교통편과 이동 방법을 알려주세요")}
-                      >
-                        경주 시내 교통편과 이동 방법을 알려주세요
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("경주역에서 불국사까지 가는 방법은?")}
-                      >
-                        경주역에서 불국사까지 가는 방법은?
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">📅 여행 일정</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("1박 2일 경주 여행 코스를 추천해주세요")}
-                      >
-                        1박 2일 경주 여행 코스를 추천해주세요
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="justify-start text-left h-auto p-3"
-                        onClick={() => setInputMessage("당일치기 경주 여행 코스는 어떻게 짜야 할까요?")}
-                      >
-                        당일치기 경주 여행 코스는 어떻게 짜야 할까요?
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="video" className="space-y-6">
-          {/* 화상 통화 영역 */}
-          <Card className="h-[600px] flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center">
-                  <Video className="mr-2 h-6 w-6 text-primary" />
-                  화상 통화
-                </span>
-                <Badge variant={webrtcState.isConnected ? "default" : "secondary"}>
-                  {webrtcState.isConnected ? "연결됨" : "대기중"}
-                </Badge>
-              </CardTitle>
-              <CardDescription>미나와 화상으로 대화하며 경주 여행 정보를 얻으세요.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              {/* 비디오 영역 */}
-              <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
-                {webrtcState.isConnected ? (
-                  <>
-                    {/* 로컬 비디오 (사용자) */}
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                    {/* 원격 비디오 (미나) - 오버레이 */}
-                    <div className="absolute top-4 right-4 w-32 h-24 bg-black rounded-lg overflow-hidden">
-                      <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-                        <span className="text-white text-sm font-medium">미나 (AI)</span>
-                      </div>
-                    </div>
-                    {!webrtcState.isVideoEnabled && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <VideoOff className="w-12 h-12 text-white" />
-                      </div>
-                    )}
-                  </>
-                ) : (
+                <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                       <Video className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">화상 통화를 시작하려면 아래 버튼을 클릭하세요</p>
+                      <p className="text-muted-foreground">화상 통화 기능은 준비 중입니다</p>
+                      <p className="text-sm text-muted-foreground mt-2">현재는 텍스트/음성 채팅을 이용해주세요</p>
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* 통화 컨트롤 */}
-              <div className="flex justify-center space-x-2 pt-4 border-t">
-                {!webrtcState.isConnected ? (
-                  <Button onClick={startVideoCall} className="bg-green-600 hover:bg-green-700">
-                    <Phone className="mr-2 h-4 w-4" />
-                    화상 통화 시작
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      onClick={toggleVideo}
-                      variant={webrtcState.isVideoEnabled ? "default" : "destructive"}
-                      size="icon"
-                    >
-                      {webrtcState.isVideoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      onClick={toggleAudio}
-                      variant={webrtcState.isMuted ? "destructive" : "default"}
-                      size="icon"
-                    >
-                      {webrtcState.isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                    </Button>
-                    <Button onClick={endVideoCall} variant="destructive">
-                      <PhoneOff className="mr-2 h-4 w-4" />
-                      통화 종료
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="map" className="space-y-6">
-          {/* 지도 가이드 영역 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Map className="mr-2 h-6 w-6 text-primary" />
-                경주 관광지 지도
-              </CardTitle>
-              <CardDescription>
-                지도에서 관광지를 클릭하면 미나가 자세한 정보를 알려드려요! 길찾기와 가상 투어도 이용하실 수 있습니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <GoogleMaps 
-                selectedAttraction={selectedAttraction}
-                onAttractionSelect={handleAttractionSelect}
-                height="500px"
-              />
-            </CardContent>
-          </Card>
-
-          {/* 가상 투어 기능 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Globe className="mr-2 h-6 w-6 text-primary" />
-                가상 투어 (구현 예정)
-              </CardTitle>
-              <CardDescription>
-                Google Earth를 활용한 360도 가상 투어 기능입니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <Globe className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground font-medium">Google Earth 가상 투어</p>
-                  <p className="text-sm text-muted-foreground">곧 업데이트될 예정입니다</p>
                 </div>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button variant="outline" disabled>
-                  <Route className="mr-2 h-4 w-4" />
-                  추천 경로 투어
-                </Button>
-                <Button variant="outline" disabled>
-                  <Camera className="mr-2 h-4 w-4" />
-                  360도 파노라마
-                </Button>
-                <Button variant="outline" disabled>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  AR 가이드
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      {/* 추가 서비스 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <MapPin className="mr-2 h-6 w-6 text-primary" />
-            여행 편의 서비스
-          </CardTitle>
-          <CardDescription>경주 여행 할인 쿠폰, 관광 상품 예약 등 다양한 혜택을 확인하세요.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button variant="outline" className="h-20 flex-col" disabled>
-            <Ticket className="h-6 w-6 mb-1 text-primary" />
-            경주 할인 쿠폰 (구현 예정)
-          </Button>
-          <Button variant="outline" className="h-20 flex-col" disabled>
-            <ShoppingCart className="h-6 w-6 mb-1 text-primary" />
-            경주 관광 상품 (구현 예정)
-          </Button>
-          <Button variant="outline" className="h-20 flex-col" disabled>
-            <Sparkles className="h-6 w-6 mb-1 text-primary" />
-            AI 추천 경주 맛집/숙소 (구현 예정)
-          </Button>
-        </CardContent>
-      </Card>
-
-      <div className="bg-muted/50 rounded-lg p-4">
-        <h3 className="font-semibold mb-2">💡 사용 팁</h3>
-        <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• <strong>AI 채팅:</strong> 경주 관광지, 맛집, 숙박 등 궁금한 것을 자유롭게 물어보세요</li>
-          <li>• <strong>음성 채팅:</strong> 마이크 버튼을 눌러 음성으로 질문하고 AI 음성 답변을 들어보세요</li>
-          <li>• <strong>화상 통화:</strong> 실시간으로 미나와 대화하며 더욱 생생한 여행 정보를 얻으세요</li>
-          <li>• <strong>지도 가이드:</strong> 관광지 마커를 클릭하면 상세 정보와 길찾기를 이용할 수 있어요</li>
-          <li>• <strong>빠른 질문:</strong> 자주 묻는 질문 버튼을 클릭하면 즉시 답변을 받을 수 있어요</li>
-        </ul>
+          <TabsContent value="map" className="space-y-6">
+            {/* 지도 영역 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MapPin className="mr-2 h-6 w-6 text-primary" />
+                  경주 관광지 지도
+                </CardTitle>
+                <CardDescription>
+                  지도에서 관광지를 클릭하면 미나가 자세한 정보를 알려드려요!
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[60vh] min-h-[400px] max-h-[600px] rounded-lg overflow-hidden">
+                  <GoogleMaps
+                    onAttractionSelect={handleAttractionSelect}
+                    selectedAttraction={selectedAttraction}
+                    className="w-full h-full"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

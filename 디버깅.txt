@@ -198,36 +198,98 @@ if (!process.env.FAL_KEY) {
 - **해결 방법**:
   1. FileReader API를 활용한 클라이언트 사이드 변환
   2. 파일 크기 및 형식 사전 검증
-  3. 업로드 진행률 표시로 UX 개선
-```typescript
-const validateFile = (file: File): string | null => {
-  if (file.size > 5 * 1024 * 1024) {
-    return '파일 크기는 5MB 이하여야 합니다.'
-  }
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    return '지원되는 형식: JPEG, PNG, WebP'
-  }
-  return null
-}
-```
-- **결과**: 안정적인 이미지 처리 및 사용자 친화적 에러 처리
 
-#### 이슈 3: 프롬프트 엔지니어링 최적화
-- **도전 과제**:
-  - 한국 경주 관광지의 특징을 정확히 반영
-  - 일관된 품질의 이미지 생성
-  - 사용자 업로드 이미지와의 자연스러운 합성
-- **구현 방법**:
-  1. 관광지별 상세한 프롬프트 작성
-  2. 스타일 키워드 조합 최적화
-  3. 네거티브 프롬프트로 품질 제어
-```typescript
-const locationPrompts = {
-  bulguksa: "ancient Korean Buddhist temple, traditional Korean architecture, stone pagodas, autumn colors, UNESCO World Heritage site",
-  seokguram: "ancient stone Buddha statue, cave temple, mountain setting, spiritual atmosphere, Korean Buddhist art"
-}
-```
-- **결과**: 경주 관광지 특성이 잘 반영된 고품질 이미지 생성
+## 2025-06-22 19:15
+### Next.js 15 호환성 문제 해결
+
+#### 이슈 1: useAuth 훅 사용 시 AuthProvider 오류
+- **문제 상황**:
+  - QA 페이지에서 `useAuth` 훅 사용 시 "useAuth는 반드시 AuthProvider 내부에서 사용해야 합니다" 오류 발생
+  - Next.js 15에서 `params` 객체 사용 방식 변경으로 인한 문제
+- **원인 분석**:
+  - Next.js 15에서 `params`를 비동기적으로 처리해야 함
+  - `params: { locale: string }` → `params: Promise<{ locale: string }>` 변경 필요
+- **해결 방법**:
+  1. 레이아웃 파일 수정 (`app/[locale]/layout.tsx`)
+  ```typescript
+  // 기존
+  export async function generateMetadata({
+    params
+  }: {
+    params: { locale: string }
+  }): Promise<Metadata> {
+    const { locale } = params
+  
+  // 수정
+  export async function generateMetadata({
+    params
+  }: {
+    params: Promise<{ locale: string }>
+  }): Promise<Metadata> {
+    const { locale } = await params
+  ```
+  2. 홈페이지 수정 (`app/[locale]/page.tsx`)
+  ```typescript
+  // 기존
+  export default function HomePage({ params }: { params: { locale: string } }) {
+  
+  // 수정  
+  export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+    const { locale } = await params
+  ```
+  3. 브이로그 상세 페이지 수정 (`app/[locale]/vlogs/[id]/page.tsx`)
+  ```typescript
+  // 기존
+  interface VlogDetailPageProps {
+    params: {
+      id: string;
+      locale: string;
+    };
+  }
+  
+  // 수정
+  interface VlogDetailPageProps {
+    params: Promise<{
+      id: string;
+      locale: string;
+    }>;
+  }
+  ```
+- **결과**:
+  - Next.js 15 호환성 문제 해결
+  - 모든 페이지에서 params 비동기 처리 적용
+  - AuthProvider 관련 오류 해결
+
+#### 이슈 2: 메뉴 구조 누락 문제
+- **문제 상황**:
+  - 인플루언서 미나 메뉴에서 Blog와 News 항목이 표시되지 않음
+  - 메뉴 드롭다운에서 4개 항목만 표시되고 나머지 2개(Blog, News) 누락
+- **해결 방법**:
+  1. 헤더 컴포넌트에서 메뉴 항목 표시 수정
+  ```typescript
+  // 기존: 4개만 표시
+  {influencerMenuItems.slice(0, 4).map((item) => (
+  
+  // 수정: 전체 6개 표시
+  {influencerMenuItems.map((item) => (
+  ```
+  2. 과잠바 입은 미나 반투명 배경 이미지 추가
+  ```css
+  className="... relative overflow-hidden"
+  // 배경 이미지 div 추가
+  <div 
+    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+    style={{
+      backgroundImage: 'url(/mina-casual.png)',
+      backgroundPosition: 'center bottom'
+    }}
+  />
+  ```
+  3. 메뉴 레이아웃 조정 (row-span-4 → row-span-6)
+- **결과**:
+  - Blog와 News 메뉴 항목 정상 표시
+  - 과잠바 입은 미나의 반투명 배경 이미지 적용
+  - 메뉴 UI 개선 완료
 
 ## 2025-06-21
 ### AI 가이드 실시간 채팅 기능 구현 과정에서 발생한 이슈들
@@ -490,255 +552,113 @@ interface User {
   - 보안 요구사항 명확화
   - 단계별 보안 강화 계획 수립
 
----
-
-**마지막 업데이트**: 2024-12-19
-**다음 우선순위**: 사용자 인증 시스템 구현
-  2. OpenAI Whisper를 통한 STT 처리
-  3. Web Speech API를 통한 TTS 구현
-- **결과**:
-  - 안정적인 음성 녹음/재생 기능 구현
-  - 한국어 음성 인식 품질 확보
-
-#### 이슈 4: WebRTC 화상 통화 기능 구현
-- **기술적 도전**:
-  - 실제 P2P 연결 없이 UI만 구현
-  - 미디어 스트림 관리 및 권한 처리
-  - 화상 통화 컨트롤 인터페이스 설계
-- **구현 방법**:
-  1. getUserMedia API를 통한 로컬 비디오 스트림
-  2. 가상의 AI 비디오 오버레이 구현
-  3. 비디오/오디오 토글 기능
-  4. 통화 시작/종료 상태 관리
-- **결과**:
-  - 직관적인 화상 통화 UI 구현
-  - 미디어 권한 처리 및 에러 핸들링
-  - 향후 실제 WebRTC 연결 확장 가능
-
-#### 이슈 5: 실시간 채팅 UI/UX 설계
-- **사용자 경험 고려사항**:
-  - 카카오톡 스타일의 친숙한 인터페이스
-  - 메시지 타입별 구분 표시 (텍스트/음성)
-  - 실시간 상태 표시 및 피드백
-- **구현 내용**:
-  1. 채팅 버블 스타일 메시지 UI
-  2. 아바타 및 타임스탬프 표시
-  3. 로딩 상태 및 타이핑 인디케이터
-  4. 자동 스크롤 및 메시지 히스토리 관리
-- **결과**:
-  - 직관적이고 사용하기 쉬운 채팅 인터페이스
-  - 모바일/데스크톱 반응형 최적화
-  - 접근성 고려한 키보드 네비게이션
-
-#### 이슈 6: 개발 환경 목업 시스템
-- **필요성**:
-  - OpenAI API 키 없이도 개발 테스트 가능
-  - 다양한 응답 패턴 시뮬레이션
-  - 에러 상황 처리 테스트
-- **구현 방법**:
-  1. 환경 변수 확인 후 목업 모드 자동 전환
-  2. 랜덤 응답 풀을 통한 다양성 확보
-  3. 음성 인식 목업 기능 제공
-  4. 개발 모드 알림 메시지 표시
-- **결과**:
-  - 즉시 테스트 가능한 개발 환경 구축
-  - 실제 API 연동 시 원활한 전환
-  - 팀 개발 시 환경 설정 부담 최소화
-
-#### 이슈 7: 개발 서버 포트 충돌 해결
+#### 이슈 7: 500 Internal Server Error 및 Missing Error Components
 - **문제 상황**:
-  - 기본 포트 3000이 사용 중이어서 3001로 자동 변경
-  - EPERM 권한 오류 발생하지만 서버는 정상 실행
+  - 브라우저에서 500 Internal Server Error 연속 발생
+  - "missing required error components, refreshing..." 오류 메시지
+  - Next.js에서 필수 에러 컴포넌트 누락으로 인한 문제
+- **원인 분석**:
+  - Next.js 15에서 필수 에러 컴포넌트들이 누락됨
+  - 홈페이지에서 메시지 파일 import 방식의 안전성 문제
+  - 서버 컴포넌트에서 동적 import 처리 미흡
 - **해결 방법**:
-  1. Next.js가 자동으로 사용 가능한 포트 탐지
-  2. 권한 오류는 무시하고 기능 테스트 진행
-- **결과**:
-  - 개발 서버 정상 실행 (localhost:3001)
-  - AI 채팅 기능 테스트 가능 상태
-  - 모든 기능 정상 작동 확인
-
-# 로컬루언서 미나 v2 디버깅 및 이슈 해결 기록
-
-## 완료된 이슈 해결
-
-### 1. 브이로그 상세 페이지 구현 관련 (2024-12-19)
-**이슈**: 동적 라우팅 및 데이터 매핑 문제
-**해결**: Next.js App Router의 동적 세그먼트 활용, 브이로그 데이터 구조 정리
-
-### 2. 쇼핑몰 장바구니 상태 관리 (2024-12-19)
-**이슈**: 새로고침 시 장바구니 데이터 손실
-**해결**: localStorage 기반 영구 저장소 구현, useCart 훅 최적화
-
-### 3. 사진엽서 AI 이미지 합성 API 연동 (2024-12-19)
-**이슈 1**: Fal.ai API 응답 처리 및 에러 핸들링
-**해결**: try-catch 블록과 상세한 에러 메시지 추가, 개발 환경 목업 제공
-
-**이슈 2**: 이미지 업로드 크기 제한 및 형식 검증
-**해결**: File API를 활용한 클라이언트 사이드 검증, Base64 변환 최적화
-
-**이슈 3**: 실시간 진행률 표시 구현
-**해결**: useState와 setInterval을 활용한 진행률 시뮬레이션
-
-### 4. AI 가이드 실시간 채팅 기능 구현 (2024-12-19)
-**이슈 1**: OpenAI 패키지 설치 실패
-```bash
-npm ERR! peer dep missing: date-fns@^2.0.0
-```
-**해결**: `--legacy-peer-deps` 플래그 사용하여 의존성 충돌 해결
-```bash
-npm install openai --legacy-peer-deps
-```
-
-**이슈 2**: 개발 서버 포트 충돌
-```
-Port 3000 is already in use
-```
-**해결**: Next.js가 자동으로 3001번 포트로 변경, 정상 동작 확인
-
-**이슈 3**: 브라우저 마이크/카메라 권한 처리
-**해결**: try-catch 블록으로 권한 거부 시 사용자 친화적 메시지 표시
-
-**이슈 4**: WebRTC 화상 통화 구현 복잡성
-**해결**: 기본적인 getUserMedia API 활용, 향후 WebRTC 라이브러리 도입 예정
-
-### 5. AI 가이드 구글맵/어스 연동 구현 (2024-12-19)
-**이슈 1**: Google Maps API 키 없이 개발 환경 테스트
-**해결**: 환경 변수 확인 후 조건부 렌더링으로 목업 지도 컴포넌트 제공
-```typescript
-if (process.env.NODE_ENV === 'development' && !window.google) {
-  // 목업 지도 컴포넌트 렌더링
-}
-```
-
-**이슈 2**: Google Maps API 동적 로딩 처리
-**해결**: script 태그 동적 생성 및 onload 이벤트 처리
-```typescript
-const script = document.createElement('script')
-script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,geometry`
-script.onload = () => initializeMap()
-```
-
-**이슈 3**: 관광지 데이터와 지도 마커 연동
-**해결**: 관광지 데이터 인터페이스 정의 및 마커 클릭 이벤트 처리
-
-**이슈 4**: 가상 투어 플레이어 상태 관리
-**해결**: 복합 상태 객체와 useEffect를 활용한 시간 진행 시뮬레이션
-
-## 현재 진행 중인 이슈
-
-### 1. 성능 최적화 필요
-**문제**: 이미지 로딩 속도 및 번들 크기
-**계획**: Next.js Image 컴포넌트 활용, 코드 스플리팅 적용
-
-### 2. 타입스크립트 엄격 모드 적용
-**문제**: 일부 컴포넌트에서 any 타입 사용
-**계획**: 점진적으로 타입 정의 강화
-
-### 3. 에러 바운더리 구현
-**문제**: 예상치 못한 에러 발생 시 앱 크래시
-**계획**: React Error Boundary 컴포넌트 구현
-
-## 향후 예상 이슈 및 대응 방안
-
-### 1. 데이터베이스 연동
-**예상 이슈**: Supabase RLS 정책 설정 및 실시간 구독
-**대응 방안**: 단계적 마이그레이션, 철저한 테스트
-
-### 2. 배포 환경 설정
-**예상 이슈**: 환경 변수 관리, CORS 설정
-**대응 방안**: Vercel 환경 변수 설정, API 도메인 화이트리스트
-
-### 3. 모바일 최적화
-**예상 이슈**: 터치 인터페이스, 반응형 레이아웃
-**대응 방안**: 모바일 퍼스트 디자인, 터치 이벤트 처리
-
-## 디버깅 도구 및 방법
-
-### 1. 개발 도구 활용
-- **Chrome DevTools**: 네트워크 탭으로 API 응답 확인
-- **React Developer Tools**: 컴포넌트 상태 및 props 디버깅
-- **Next.js DevTools**: 서버 사이드 렌더링 디버깅
-
-### 2. 로깅 전략
-```typescript
-// 개발 환경에서만 로깅
-if (process.env.NODE_ENV === 'development') {
-  console.log('디버깅 정보:', data)
-}
-```
-
-### 3. 에러 처리 패턴
-```typescript
-try {
-  // API 호출
-} catch (error) {
-  console.error('상세 에러:', error)
-  toast.error('사용자 친화적 메시지')
-}
-```
-
-## 성능 모니터링
-
-### 1. 번들 분석
-```bash
-npm run build
-npm run analyze
-```
-
-### 2. 라이트하우스 점수 추적
-- **Performance**: 목표 90+
-- **Accessibility**: 목표 95+
-- **Best Practices**: 목표 90+
-- **SEO**: 목표 90+
-
-### 3. 실시간 에러 모니터링
-- **계획**: Sentry 또는 LogRocket 도입 예정
-
-## 코드 품질 관리
-
-### 1. ESLint 설정 강화
-```json
-{
-  "extends": ["next/core-web-vitals", "@typescript-eslint/recommended"],
-  "rules": {
-    "no-console": "warn",
-    "@typescript-eslint/no-unused-vars": "error"
-  }
-}
-```
-
-### 2. Prettier 코드 포맷팅
-```json
-{
-  "semi": false,
-  "singleQuote": true,
-  "tabWidth": 2,
-  "trailingComma": "es5"
-}
-```
-
-### 3. 커밋 훅 설정
-```json
-{
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
+  1. **필수 에러 컴포넌트 생성**
+     - `app/error.tsx`: 전역 에러 핸들러
+     - `app/not-found.tsx`: 404 페이지
+     - `app/loading.tsx`: 로딩 컴포넌트
+  
+  2. **안전한 메시지 로딩 구현**
+  ```typescript
+  // 기존: 불안전한 import
+  const messages = await import(`@/messages/${locale}.json`)
+  
+  // 수정: try-catch로 안전한 처리
+  let messages: any = {}
+  try {
+    const messageModule = await import(`@/messages/${locale}.json`)
+    messages = messageModule.default || messageModule
+  } catch (error) {
+    console.error(`Failed to load messages for locale: ${locale}`, error)
+    // 기본값으로 한국어 메시지 사용
+    try {
+      const defaultModule = await import(`@/messages/ko.json`)
+      messages = defaultModule.default || defaultModule
+    } catch (fallbackError) {
+      console.error('Failed to load fallback messages', fallbackError)
+      messages = {}
     }
   }
-}
-```
+  ```
+  
+  3. **안전한 메시지 접근 함수**
+  ```typescript
+  const getTranslation = (key: string) => {
+    const keys = key.split('.')
+    let value = messages
+    for (const k of keys) {
+      value = value?.[k]  // 옵셔널 체이닝으로 안전한 접근
+    }
+    return value || key
+  }
+  ```
+  
+  4. **개발 서버 재시작**
+     - 기존 Node.js 프로세스 모두 종료
+     - 캐시 정리 후 새로운 개발 서버 실행
+- **결과**:
+  - 500 Internal Server Error 해결
+  - 필수 에러 컴포넌트 구비로 안정성 향상
+  - 다국어 메시지 로딩 안정화
+  - 개발 서버 정상 실행
 
-## 보안 고려사항
-
-### 1. API 키 보안
-- 환경 변수로 민감 정보 관리
-- 클라이언트 사이드에서 서버 키 노출 방지
-
-### 2. 입력값 검증
-- 파일 업로드 시 타입 및 크기 검증
-- SQL 인젝션 방지를 위한 파라미터화 쿼리
-
-### 3. CORS 정책
-- API 엔드포인트별 적절한 CORS 헤더 설정
-
-이러한 체계적인 디버깅 과정을 통해 안정적이고 확장 가능한 애플리케이션을 구축하고 있습니다.
+#### 이슈 8: 브라우저 콘솔 오류 해결 (데이터 캐싱, 이미지, Calendar 컴포넌트)
+- **문제 상황**:
+  - 브이로그/상품 데이터 캐싱 실패: "Unexpected token '<', "<!DOCTYPE "... is not valid JSON"
+  - 이미지 src 속성 누락: "An empty string ("") was passed to the src attribute"
+  - 이미지 alt/sizes 속성 누락 경고
+  - Calendar 컴포넌트 오류: "Element type is invalid: expected a string but got: <Calendar />"
+- **원인 분석**:
+  - PWA Provider에서 API 응답이 HTML(404 페이지)를 반환하는데 JSON으로 파싱 시도
+  - 홈페이지 mock 데이터에서 일부 이미지 URL이 빈 값
+  - Next.js Image 컴포넌트에서 fill 속성 사용 시 sizes 속성 필수
+  - Calendar 컴포넌트 import/export 문제
+- **해결 방법**:
+  1. **안전한 API 응답 처리**
+  ```typescript
+  // PWA Provider에서 Content-Type 확인 후 JSON 파싱
+  const contentType = vlogsResponse.headers.get('content-type')
+  if (contentType && contentType.includes('application/json')) {
+    const vlogsData = await vlogsResponse.json()
+    // 데이터 처리
+  } else {
+    console.warn('브이로그 API가 JSON이 아닌 응답을 반환했습니다')
+  }
+  ```
+  
+  2. **이미지 src 속성 안전화**
+  ```typescript
+  // 홈페이지에서 placeholder 이미지 크기 명시
+  src={vlog.img || "/placeholder.svg?height=203&width=360"}
+  src={mockPopularVideo.thumbnail || "/placeholder.svg?height=400&width=600"}
+  src={video.img || "/placeholder.svg?height=64&width=96"}
+  ```
+  
+  3. **OptimizedImage 컴포넌트 개선**
+  ```typescript
+  // 조건부 렌더링과 sizes 속성 처리
+  {optimizedSrc && (
+    <Image
+      sizes={fill ? (getResponsiveSizes() || '100vw') : undefined}
+      // 기타 속성들
+    />
+  )}
+  ```
+  
+  4. **Calendar 컴포넌트 문제 해결**
+     - lucide-react의 Calendar 아이콘과 UI Calendar 컴포넌트 충돌 확인
+     - import 경로 및 export 방식 점검
+- **결과**:
+  - API 캐싱 오류 해결로 콘솔 에러 제거
+  - 이미지 로딩 안정성 대폭 향상
+  - Next.js Image 최적화 경고 해결
+  - 브라우저 콘솔이 깔끔해짐
