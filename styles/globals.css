@@ -4,6 +4,17 @@
 
 body {
   font-family: Arial, Helvetica, sans-serif;
+  @apply bg-background text-foreground;
+  margin-left: 10%;
+  margin-right: 10%;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-size: 1.2em;
+}
+
+p, a, li {
+  font-size: 1em;
 }
 
 @layer utilities {
@@ -91,4 +102,18 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Adjusting margins and font sizes for specific pages */
+.vlog-page, .youtube-page, .instagram-page, .x-page, .blog-page, .news-page {
+  margin-left: 10%;
+  margin-right: 10%;
+}
+
+.vlog-page h1, .youtube-page h1, .instagram-page h1, .x-page h1, .blog-page h1, .news-page h1 {
+  font-size: 1.2em;
+}
+
+.vlog-page p, .youtube-page p, .instagram-page p, .x-page p, .blog-page p, .news-page p {
+  font-size: 1em;
 }

@@ -87,13 +87,21 @@ export default function PersonaPage() {
     alert("페르소나 설정이 저장되었습니다!")
   }
 
+  const handlePersonaChange = (event) => {
+    setPersona(event.target.value);
+  };
+
+  const handleSubmit = () => {
+    // 브랜딩 목표 및 마케팅 전략 생성 로직
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center">
             <User className="mr-3 h-8 w-8" />
-            페르소나 설정
+            인플루언서 페르소나 설정
           </h1>
           <p className="text-gray-600">미나의 성격, 말투, 관심사 등을 정의하여 일관된 캐릭터를 유지하세요</p>
         </div>
@@ -250,6 +258,21 @@ export default function PersonaPage() {
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>인플루언서 페르소나 설정</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            type="text"
+            value={persona}
+            onChange={handlePersonaChange}
+            placeholder="페르소나를 입력하세요"
+          />
+          <Button onClick={handleSubmit}>전략 생성</Button>
         </CardContent>
       </Card>
     </div>

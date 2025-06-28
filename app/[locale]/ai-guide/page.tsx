@@ -43,7 +43,6 @@ import {
   ChevronUp
 } from "lucide-react"
 import { toast } from "sonner"
-import GoogleMaps from "@/components/maps/google-maps"
 
 /**
  * 채팅 메시지 인터페이스
@@ -80,7 +79,6 @@ interface VoiceSettings {
 /**
  * AI 가이드 실시간 채팅 페이지
  * OpenAI API를 활용한 텍스트/음성 채팅과 WebRTC 화상 통화 기능 제공
- * Google Maps 연동으로 지도 기반 가이드 서비스 추가
  */
 export default function AiGuidePage() {
   // 채팅 상태 관리
@@ -127,9 +125,8 @@ export default function AiGuidePage() {
     isMuted: false
   })
 
-  // 지도 상태
-  const [selectedAttraction, setSelectedAttraction] = useState<string>('')
-  const [activeTab, setActiveTab] = useState('chat')
+  // Add state for tab navigation
+  const [activeTab, setActiveTab] = useState('chat');
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -562,22 +559,6 @@ export default function AiGuidePage() {
   }
 
   /**
-   * 관광지 선택 처리
-   */
-  const handleAttractionSelect = (attraction: any) => {
-    setSelectedAttraction(attraction.id)
-    
-    const attractionMessage = `${attraction.name}에 대해 자세히 알려주세요.`
-    setInputMessage(attractionMessage)
-    
-    setActiveTab('chat')
-    
-    setTimeout(() => {
-      sendMessage()
-    }, 100)
-  }
-
-  /**
    * 메시지 포맷팅
    */
   const formatMessage = (content: string) => {
@@ -588,6 +569,53 @@ export default function AiGuidePage() {
       </span>
     ))
   }
+
+  // Check video chat connection logic
+  useEffect(() => {
+    // Initialize WebRTC connection
+    const initializeConnection = async () => {
+      try {
+        const peerConnection = new RTCPeerConnection();
+        peerConnectionRef.current = peerConnection;
+
+        // Add event listeners for connection state
+        peerConnection.oniceconnectionstatechange = () => {
+          const state = peerConnection.iceConnectionState;
+          if (state === 'connected') {
+            setWebrtcState(prev => ({ ...prev, isConnected: true }));
+          } else {
+            setWebrtcState(prev => ({ ...prev, isConnected: false }));
+          }
+        };
+
+        // Add local stream to connection
+        const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        // Set local video stream
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
+        }
+
+        // Handle remote stream
+        peerConnection.ontrack = (event) => {
+          const [remoteStream] = event.streams;
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = remoteStream;
+          }
+        };
+      } catch (error) {
+        console.error('Failed to initialize WebRTC connection:', error);
+      }
+    };
+
+    initializeConnection();
+
+    return () => {
+      // Clean up connection
+      peerConnectionRef.current?.close();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -603,17 +631,13 @@ export default function AiGuidePage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="chat" className="flex items-center gap-2">
+            <TabsTrigger value="chat" className="flex items-center gap-2" onClick={() => setActiveTab('chat')}>
               <MessageSquare className="w-4 h-4" />
               채팅
             </TabsTrigger>
-            <TabsTrigger value="video" className="flex items-center gap-2">
+            <TabsTrigger value="video" className="flex items-center gap-2" onClick={() => setActiveTab('video')}>
               <Video className="w-4 h-4" />
               화상 채팅
-            </TabsTrigger>
-            <TabsTrigger value="map" className="flex items-center gap-2">
-              <Map className="w-4 h-4" />
-              지도
             </TabsTrigger>
           </TabsList>
 
@@ -870,53 +894,24 @@ export default function AiGuidePage() {
 
           <TabsContent value="video" className="space-y-6">
             {/* 화상 통화 영역 */}
-            <Card className="h-[600px] flex flex-col">
-              <CardHeader>
+            <Card className="flex flex-col">
+              <CardHeader className="pb-4">
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center">
                     <Video className="mr-2 h-6 w-6 text-primary" />
                     화상 통화
                   </span>
-                  <Badge variant={webrtcState.isConnected ? "default" : "secondary"}>
-                    {webrtcState.isConnected ? "연결됨" : "대기중"}
-                  </Badge>
-                </CardTitle>
-                <CardDescription>미나와 화상으로 대화하며 경주 여행 정보를 얻으세요.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <Video className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">화상 통화 기능은 준비 중입니다</p>
-                      <p className="text-sm text-muted-foreground mt-2">현재는 텍스트/음성 채팅을 이용해주세요</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="map" className="space-y-6">
-            {/* 지도 영역 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="mr-2 h-6 w-6 text-primary" />
-                  경주 관광지 지도
+                  <Badge variant="default">대기중</Badge>
                 </CardTitle>
                 <CardDescription>
-                  지도에서 관광지를 클릭하면 미나가 자세한 정보를 알려드려요!
+                  미나와 화상으로 대화하며 경주 여행 정보를 얻으세요.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="h-[60vh] min-h-[400px] max-h-[600px] rounded-lg overflow-hidden">
-                  <GoogleMaps
-                    onAttractionSelect={handleAttractionSelect}
-                    selectedAttraction={selectedAttraction}
-                    className="w-full h-full"
-                  />
+              <CardContent className="flex justify-between items-center">
+                <div className="w-1/2 h-auto flex justify-center items-center">
+                  <img src="/mina-active.png" alt="미나" className="w-3/4 h-auto rounded-lg animate-pulse" />
                 </div>
+                <video ref={localVideoRef} autoPlay playsInline className="w-1/2 h-auto rounded-lg" />
               </CardContent>
             </Card>
           </TabsContent>

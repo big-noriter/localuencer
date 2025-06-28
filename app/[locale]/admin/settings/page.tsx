@@ -9,19 +9,23 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Settings, Key, Bell, Shield, Save } from "lucide-react"
 
-export default function SettingsPage() {
+export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
-    openaiApiKey: "",
-    autoResponse: true,
-    emailNotifications: true,
-    contentModeration: true,
-    backupEnabled: true,
+    content: '',
+    visitorInfo: '',
+    shopStats: '',
+    inquiries: '',
+    travelProducts: '',
+    recommendedDestinations: ''
   })
 
-  const handleSave = () => {
-    // In a real app, this would save to your database/environment
-    console.log("Saving settings:", settings)
-    alert("설정이 저장되었습니다!")
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setSettings(prevSettings => ({ ...prevSettings, [name]: value }));
+  }
+
+  const handleSubmit = () => {
+    // 설정 저장 로직
   }
 
   return (
@@ -30,108 +34,156 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center">
             <Settings className="mr-3 h-8 w-8" />
-            시스템 설정
+            관리자 설정
           </h1>
-          <p className="text-gray-600">외부 API 키 및 시스템 설정을 관리하세요</p>
+          <p className="text-gray-600">콘텐츠, 방문객 정보, 쇼핑몰 통계 등을 관리하세요</p>
         </div>
-        <Button onClick={handleSave} className="bg-primary">
+        <Button onClick={handleSubmit} className="bg-primary">
           <Save className="mr-2 h-4 w-4" />
           설정 저장
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* API Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Key className="mr-2 h-5 w-5" />
-              API 설정
-            </CardTitle>
-            <CardDescription>외부 서비스 연동을 위한 API 키를 관리합니다</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>관리자 설정</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            type="text"
+            name="content"
+            value={settings.content}
+            onChange={handleChange}
+            placeholder="콘텐츠 설정"
+          />
+          <input
+            type="text"
+            name="visitorInfo"
+            value={settings.visitorInfo}
+            onChange={handleChange}
+            placeholder="방문객 정보 설정"
+          />
+          <input
+            type="text"
+            name="shopStats"
+            value={settings.shopStats}
+            onChange={handleChange}
+            placeholder="쇼핑몰 통계 설정"
+          />
+          <input
+            type="text"
+            name="inquiries"
+            value={settings.inquiries}
+            onChange={handleChange}
+            placeholder="질의 사항 설정"
+          />
+          <input
+            type="text"
+            name="travelProducts"
+            value={settings.travelProducts}
+            onChange={handleChange}
+            placeholder="여행 상품 설정"
+          />
+          <input
+            type="text"
+            name="recommendedDestinations"
+            value={settings.recommendedDestinations}
+            onChange={handleChange}
+            placeholder="추천 여행지 설정"
+          />
+        </CardContent>
+      </Card>
+
+      {/* API Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Key className="mr-2 h-5 w-5" />
+            API 설정
+          </CardTitle>
+          <CardDescription>외부 서비스 연동을 위한 API 키를 관리합니다</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="openaiApiKey">OpenAI API 키</Label>
+            <Input
+              id="openaiApiKey"
+              type="password"
+              placeholder="sk-..."
+              value={settings.openaiApiKey}
+              onChange={(e) => setSettings((prev) => ({ ...prev, openaiApiKey: e.target.value }))}
+            />
+            <p className="text-xs text-gray-500 mt-1">Q&A 자동 답변 및 콘텐츠 생성에 사용됩니다</p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <h4 className="font-medium">API 사용량</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>이번 달 사용량</span>
+                <span className="font-medium">$12.34 / $50.00</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full" style={{ width: "25%" }}></div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Bell className="mr-2 h-5 w-5" />
+            알림 설정
+          </CardTitle>
+          <CardDescription>시스템 알림 및 자동화 설정을 관리합니다</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="openaiApiKey">OpenAI API 키</Label>
-              <Input
-                id="openaiApiKey"
-                type="password"
-                placeholder="sk-..."
-                value={settings.openaiApiKey}
-                onChange={(e) => setSettings((prev) => ({ ...prev, openaiApiKey: e.target.value }))}
-              />
-              <p className="text-xs text-gray-500 mt-1">Q&A 자동 답변 및 콘텐츠 생성에 사용됩니다</p>
+              <Label htmlFor="autoResponse">자동 응답</Label>
+              <p className="text-xs text-gray-500">새로운 Q&A에 자동으로 답변을 생성합니다</p>
             </div>
+            <Switch
+              id="autoResponse"
+              checked={settings.autoResponse}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, autoResponse: checked }))}
+            />
+          </div>
 
-            <Separator />
+          <Separator />
 
-            <div className="space-y-3">
-              <h4 className="font-medium">API 사용량</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>이번 달 사용량</span>
-                  <span className="font-medium">$12.34 / $50.00</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full" style={{ width: "25%" }}></div>
-                </div>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="emailNotifications">이메일 알림</Label>
+              <p className="text-xs text-gray-500">중요한 활동에 대한 이메일 알림을 받습니다</p>
             </div>
-          </CardContent>
-        </Card>
+            <Switch
+              id="emailNotifications"
+              checked={settings.emailNotifications}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, emailNotifications: checked }))}
+            />
+          </div>
 
-        {/* Notification Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Bell className="mr-2 h-5 w-5" />
-              알림 설정
-            </CardTitle>
-            <CardDescription>시스템 알림 및 자동화 설정을 관리합니다</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="autoResponse">자동 응답</Label>
-                <p className="text-xs text-gray-500">새로운 Q&A에 자동으로 답변을 생성합니다</p>
-              </div>
-              <Switch
-                id="autoResponse"
-                checked={settings.autoResponse}
-                onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, autoResponse: checked }))}
-              />
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="contentModeration">콘텐츠 검열</Label>
+              <p className="text-xs text-gray-500">부적절한 콘텐츠를 자동으로 필터링합니다</p>
             </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="emailNotifications">이메일 알림</Label>
-                <p className="text-xs text-gray-500">중요한 활동에 대한 이메일 알림을 받습니다</p>
-              </div>
-              <Switch
-                id="emailNotifications"
-                checked={settings.emailNotifications}
-                onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, emailNotifications: checked }))}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="contentModeration">콘텐츠 검열</Label>
-                <p className="text-xs text-gray-500">부적절한 콘텐츠를 자동으로 필터링합니다</p>
-              </div>
-              <Switch
-                id="contentModeration"
-                checked={settings.contentModeration}
-                onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, contentModeration: checked }))}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Switch
+              id="contentModeration"
+              checked={settings.contentModeration}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, contentModeration: checked }))}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Security & Backup */}
       <Card>

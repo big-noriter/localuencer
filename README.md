@@ -46,10 +46,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 # Fal.ai API 설정 (사진엽서 AI 이미지 합성용)
-FAL_API_KEY=fal_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FAL_API_KEY=your-fal-api-key
 
 # OpenAI API 설정 (AI 가이드 및 콘텐츠 생성용)
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+OPENAI_API_KEY=your-openai-api-key
 
 # Google Maps API 설정 (지도 및 가상 투어 기능용)
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
