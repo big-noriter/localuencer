@@ -1,11 +1,15 @@
 import Link from "next/link"
+import Image from "next/image"
+import { Suspense, lazy } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import HeroImageSlider from "@/components/hero-image-slider" // 슬라이더 컴포넌트 임포트
 import { ArrowRight, Heart, MessageSquare, PlayCircle, ShoppingBag, Sparkles, Star, Map, ImageIcon } from "lucide-react"
 
 import SchemaOrg, { combineSchemas } from "@/components/schema-org"
 import { createWebPageSchema, createBreadcrumbSchema } from "@/lib/schema"
+
+// 지연 로딩으로 HeroImageSlider 컴포넌트 임포트
+const HeroImageSlider = lazy(() => import("@/components/hero-image-slider"))
 
 // Mock data - replace with actual data from Supabase later
 const mockStats = { followers: "1.2M", rating: "4.9", views: "2.8M" }
@@ -103,6 +107,15 @@ const heroImages = [
   { src: "/mina-casual.png", alt: "미나 캐주얼룩 이미지" },
   { src: "/mina-active.png", alt: "미나 활동적인 모습 이미지" },
 ]
+
+// 로딩 플레이스홀더 컴포넌트
+function LoadingPlaceholder() {
+  return (
+    <div className="w-full h-[400px] bg-muted animate-pulse rounded-lg flex items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+    </div>
+  );
+}
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
@@ -213,7 +226,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   </div>
                 </div>
               </div>
-              <HeroImageSlider images={heroImages} />
+              <Suspense fallback={<LoadingPlaceholder />}>
+                <HeroImageSlider images={heroImages} />
+              </Suspense>
             </div>
           </div>
         </section>
@@ -226,242 +241,193 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer">
-              <img 
+              <Image 
                 src="/Image_fx.jpg" 
                 alt="미나와 함께하는 경주 여행" 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                className="object-cover transition-transform duration-300 group-hover:scale-110"
+                width={400}
+                height={400}
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                 <span className="text-white font-semibold">경주 여행 AI 아트</span>
               </div>
             </div>
             <div className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer">
-              <img 
+              <Image 
                 src="/Image_fx (1).jpg" 
                 alt="경주 불국사와 미나" 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                className="object-cover transition-transform duration-300 group-hover:scale-110"
+                width={400}
+                height={400}
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                 <span className="text-white font-semibold">불국사 탐방</span>
               </div>
             </div>
             <div className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer">
-              <img 
+              <Image 
                 src="/Image_fx (2).jpg" 
-                alt="경주 석굴암과 미나" 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                alt="경주 석굴암과 미나"
+                className="object-cover transition-transform duration-300 group-hover:scale-110"
+                width={400}
+                height={400}
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white font-semibold">석굴암 여행</span>
+                <span className="text-white font-semibold">석굴암 방문</span>
               </div>
             </div>
             <div className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer">
-              <img 
+              <Image 
                 src="/Image_fx (3).jpg" 
-                alt="경주 첨성대와 미나" 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                alt="경주 첨성대와 미나"
+                className="object-cover transition-transform duration-300 group-hover:scale-110"
+                width={400}
+                height={400}
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white font-semibold">첨성대 관측</span>
+                <span className="text-white font-semibold">첨성대 산책</span>
               </div>
             </div>
-            <div className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer md:col-span-2">
-              <img 
-                src="/gyeongju-tourist-map-900.jpg" 
-                alt="경주 관광지도" 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white font-semibold">경주 관광지도</span>
-              </div>
-            </div>
-            <div className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer">
-              <img 
-                src="/20180417_233802.jpg" 
-                alt="경주 야경" 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white font-semibold">경주 야경</span>
-              </div>
-            </div>
-            <div className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer">
-              <img 
-                src="/IMG_2568-1024x682.jpg" 
-                alt="경주 대릉원" 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white font-semibold">대릉원</span>
-              </div>
-            </div>
-          </div>
-          <div className="text-center mt-8">
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/vlogs">더 많은 경주 여행 콘텐츠 보기 →</Link>
-            </Button>
           </div>
         </section>
 
-        {/* 다양한 모습들 Section */}
+        {/* 특징 카드 섹션 */}
         <section className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-2 text-foreground">미나의 팔색조 매력 탐구! ✨</h2>
+          <h2 className="text-3xl font-bold text-center mb-2 text-foreground">미나와 함께하는 경주 여행 서비스</h2>
           <p className="text-lg text-muted-foreground text-center mb-10">
-            오늘은 어떤 미나를 만나볼까용? 두근두근! (๑˃̵ᴗ˂̵)و
+            AI 인플루언서 미나가 제공하는 다양한 서비스를 경험해보세요
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {mockVlogsTeaser.map((vlog) => (
-              <Card
-                key={vlog.id}
-                className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out transform hover:-translate-y-1"
-              >
-                <CardContent className="p-0">
-                  <div className="aspect-[4/3] relative">
-                    {" "}
-                    {/* Adjusted aspect ratio for better image display */}
-                    <img 
-                      src={vlog.img || "/placeholder.svg?height=203&width=360"} 
-                      alt={vlog.title} 
-                      className="w-full h-full object-cover" 
-                    />
-                    <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md">
-                      {vlog.tag}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featureCards.map((card, index) => (
+              <Link href={card.link} key={index}>
+                <Card className="h-full hover:shadow-lg transition-shadow duration-300 border-none bg-gradient-to-br from-background to-muted">
+                  <CardHeader className="pb-2">
+                    <div className={`p-2 rounded-full w-12 h-12 flex items-center justify-center ${card.color} mb-2`}>
+                      <card.icon className={`w-6 h-6 ${card.textColor}`} />
                     </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-foreground">{vlog.title}</h3>
-                  </div>
-                </CardContent>
-              </Card>
+                    <h3 className="text-xl font-bold">{card.title}</h3>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground">{card.description}</p>
+                    <div className={`flex items-center mt-4 ${card.textColor} font-medium`}>
+                      <span>자세히 보기</span>
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </section>
 
-        {/* 인기 영상 Section */}
+        {/* 인기 비디오 섹션 */}
         <section className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-2 text-foreground">미나의 인기 폭발 영상! 🚀</h2>
-          <p className="text-lg text-muted-foreground text-center mb-10">이거 안 보면 후회할지도 몰라용! 히힛 😉</p>
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <Card className="overflow-hidden shadow-lg">
-                <div className="aspect-video relative group">
-                  <img
-                    src={mockPopularVideo.thumbnail || "/placeholder.svg?height=400&width=600"}
-                    alt={mockPopularVideo.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute bottom-0 left-0 bg-black/60 text-white px-3 py-1 text-sm">
-                    {mockPopularVideo.duration}
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <PlayCircle className="w-16 h-16 text-white/80 hover:text-white transition-colors cursor-pointer" />
+          <h2 className="text-3xl font-bold text-center mb-2 text-foreground">미나의 인기 콘텐츠</h2>
+          <p className="text-lg text-muted-foreground text-center mb-10">
+            경주의 매력을 담은 미나의 인기 콘텐츠를 확인해보세요
+          </p>
+          <div className="grid md:grid-cols-3 gap-8 items-start">
+            <div className="md:col-span-2">
+              <div className="rounded-lg overflow-hidden relative aspect-video bg-muted">
+                <Image
+                  src={mockPopularVideo.thumbnail}
+                  alt={mockPopularVideo.title}
+                  className="w-full h-full object-cover"
+                  width={960}
+                  height={540}
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-6">
+                  <h3 className="text-xl md:text-2xl font-bold text-white mb-2">{mockPopularVideo.title}</h3>
+                  <p className="text-white/80 mb-4 text-sm md:text-base line-clamp-2">{mockPopularVideo.description}</p>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-white/80 flex items-center">
+                      <Heart className="h-4 w-4 mr-1" /> {mockPopularVideo.likes}
+                    </span>
+                    <span className="text-white/80 flex items-center">
+                      <MessageSquare className="h-4 w-4 mr-1" /> {mockPopularVideo.comments}
+                    </span>
+                    <span className="text-white/80">{mockPopularVideo.duration}</span>
                   </div>
                 </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-2 text-foreground">{mockPopularVideo.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{mockPopularVideo.description}</p>
-                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                    <span>❤️ {mockPopularVideo.likes}</span>
-                    <span>💬 {mockPopularVideo.comments}</span>
-                    <span>2시간 전</span>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="rounded-full bg-primary/90 p-4 cursor-pointer hover:bg-primary transition-colors">
+                    <PlayCircle className="h-8 w-8 text-white" />
                   </div>
-                  <Button
-                    variant="outline"
-                    className="mt-4 border-primary text-primary hover:bg-primary/10 w-full sm:w-auto"
-                  >
-                    지금 바로 시청하기! 🎬
-                  </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
             <div className="space-y-4">
-              {mockVideoList.map((video) => (
-                <Card
-                  key={video.title}
-                  className="flex items-center p-3 shadow-md hover:shadow-lg transition-shadow duration-300"
-                >
-                  <img
-                    src={video.img || "/placeholder.svg?height=64&width=96"}
-                    alt={video.title}
-                    className="w-24 h-16 object-cover rounded-md mr-4"
-                  />
-                  <div>
-                    <h4 className="font-semibold text-sm text-foreground mb-1 line-clamp-2">{video.title}</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {video.views} 조회수 • {video.duration}
-                    </p>
+              {mockVideoList.map((video, index) => (
+                <div key={index} className="flex space-x-4 items-center">
+                  <div className="relative flex-shrink-0 w-24 h-16 md:w-40 md:h-24 rounded overflow-hidden">
+                    <Image
+                      src={video.img}
+                      alt={video.title}
+                      className="object-cover"
+                      width={160}
+                      height={90}
+                      loading="lazy"
+                    />
+                    <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
+                      {video.duration}
+                    </div>
                   </div>
-                </Card>
+                  <div>
+                    <h4 className="font-medium line-clamp-2">{video.title}</h4>
+                    <p className="text-sm text-muted-foreground mt-1">{video.views} 조회</p>
+                  </div>
+                </div>
               ))}
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/vlogs">더 많은 비디오 보기</Link>
+              </Button>
             </div>
           </div>
         </section>
 
-        {/* Feature Cards Section */}
+        {/* 최근 콘텐츠 섹션 */}
         <section className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featureCards.map((feature) => (
-              <Card
-                key={feature.title}
-                className={`shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-1 ${feature.color} group`}
-              >
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div
-                    className={`p-3 rounded-full mb-4 ${feature.textColor} bg-background transition-transform duration-300 group-hover:scale-110`}
-                  >
-                    <feature.icon className={`w-8 h-8 ${feature.textColor}`} />
+          <h2 className="text-3xl font-bold text-center mb-2 text-foreground">미나의 최신 콘텐츠</h2>
+          <p className="text-lg text-muted-foreground text-center mb-10">
+            경주의 다양한 매력을 담은 미나의 최신 콘텐츠를 확인해보세요
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {mockRecentContent.map((content) => (
+              <div key={content.id} className="rounded-lg overflow-hidden bg-muted group">
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <Image
+                    src={content.img}
+                    alt={content.title}
+                    className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                    width={400}
+                    height={300}
+                    loading="lazy"
+                  />
+                  <div className="absolute top-3 left-3 bg-primary/90 text-white text-xs font-medium px-2 py-1 rounded">
+                    {content.category}
                   </div>
-                  <h3 className={`text-xl font-semibold mb-2 ${feature.textColor}`}>{feature.title}</h3>
-                  <p className={`text-sm mb-4 ${feature.textColor}/80`}>{feature.description}</p>
-                  <Link
-                    href={feature.link}
-                    className={`text-sm font-medium ${feature.textColor} hover:underline group-hover:font-bold`}
-                  >
-                    자세히 보러가기{" "}
-                    <ArrowRight className="inline w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-                  </Link>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-lg mb-2">{content.title}</h3>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">2024.06.15</span>
+                    <span className="flex items-center text-sm">
+                      <Heart className="h-4 w-4 mr-1 text-rose-500" /> {content.likes}
+                    </span>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
-        </section>
-
-        {/* 최신 콘텐츠 Section */}
-        <section className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-2 text-foreground">미나의 따끈따끈한 새 소식! 🔥</h2>
-          <p className="text-lg text-muted-foreground text-center mb-10">
-            놓치면 후회할지도 몰라용~ 얼른 확인해보세용! (づ｡◕‿‿◕｡)づ
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockRecentContent.map((content) => (
-              <Card
-                key={content.id}
-                className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out transform hover:-translate-y-1 group"
-              >
-                <CardHeader className="p-0">
-                  <div className="aspect-[4/3] relative">
-                    {" "}
-                    {/* Adjusted aspect ratio */}
-                    <img
-                      src={content.img || "/placeholder.svg"}
-                      alt={content.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    {content.category === "NEW" && (
-                      <div className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs font-semibold px-2 py-1 rounded-md animate-bounce">
-                        NEW!
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg text-foreground mb-1">{content.title}</h3>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Heart className="w-4 h-4 mr-1 text-red-500" /> {content.likes}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="text-center mt-8">
+            <Button asChild>
+              <Link href="/sns">모든 콘텐츠 보기</Link>
+            </Button>
           </div>
         </section>
       </div>

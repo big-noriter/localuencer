@@ -44,6 +44,7 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    minimumCacheTTL: 60 * 60 * 24, // 24시간 캐싱
   },
 
   // 압축 설정
@@ -70,6 +71,18 @@ const nextConfig = {
       test: /\.svg$/,
       use: ['@svgr/webpack'],
     })
+
+    // 불필요한 모듈 제외
+    config.externals = [...(config.externals || []), 'canvas', 'jsdom'];
+    
+    // 이미지 최적화
+    config.module.rules.push({
+      test: /\.(jpe?g|png|svg|gif|ico|eot|ttf|woff|woff2|mp4|pdf|webm|webp)$/,
+      type: 'asset',
+      generator: {
+        filename: 'static/chunks/[path][name].[hash][ext]'
+      },
+    });
 
     return config
   },
@@ -126,6 +139,15 @@ const nextConfig = {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable',
           },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
         ],
       },
     ]
@@ -185,6 +207,9 @@ const nextConfig = {
   env: {
     CUSTOM_KEY: 'my-value',
   },
+
+  // 페이지 로딩 최적화
+  reactStrictMode: true,
 }
 
 export default withNextIntl(nextConfig)

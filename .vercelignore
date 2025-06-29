@@ -1,0 +1,64 @@
+# 큰 파일 무시
+*.zip
+*.gz
+*.tar
+*.rar
+*.7z
+
+# 불필요한 파일 무시
+.git
+.github
+node_modules
+.next/cache
+.vercel
+.cache
+
+# 개발용 파일 무시
+.env.local
+.env.development
+.env.test
+*.dev.*
+
+# 백업 파일 무시
+*_bak
+*_backup
+*.bak
+*.backup
+**/backup/**
+
+# 로그 파일 무시
+*.log
+logs/
+log/
+
+# 특정 큰 파일/폴더 무시
+"Localuencer v2 최적화직전.zip"
+"Localuencer v2 최적화직전/"
+doc/
+
+# 테스트 관련 파일 무시
+**/__tests__/**
+**/test/**
+**/tests/**
+**/*.test.*
+**/*.spec.*
+
+# 문서 파일 무시
+*.md
+*.txt
+*.pdf
+*.doc
+*.docx
+
+# 이미지 원본 파일 (필요한 이미지는 public/ 폴더에 최적화하여 보관)
+*.psd
+*.ai
+*.sketch
+*.fig
+
+# 기타 불필요한 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea
+.vscode 

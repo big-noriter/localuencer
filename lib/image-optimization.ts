@@ -477,4 +477,131 @@ export class ImageOptimizer {
 export const defaultImageOptimizer = new ImageOptimizer({
   quality: 0.8,
   format: 'webp'
-}) 
+})
+
+/**
+ * 이미지 최적화 유틸리티 함수 모음
+ * Next.js의 Image 컴포넌트와 함께 사용하기 위한 유틸리티 함수들입니다.
+ */
+
+/**
+ * 이미지 크기 계산을 위한 인터페이스
+ */
+interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
+/**
+ * 이미지 URL에 최적화 파라미터 추가
+ * @param src 원본 이미지 URL
+ * @param width 원하는 너비
+ * @param quality 이미지 품질 (1-100)
+ * @returns 최적화된 이미지 URL
+ */
+export function optimizeImageUrl(src: string, width?: number, quality: number = 75): string {
+  if (!src) return '';
+  
+  // 이미 최적화된 URL이거나 외부 URL인 경우 그대로 반환
+  if (src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('http')) {
+    return src;
+  }
+  
+  // 이미지 확장자 확인
+  const extension = src.split('.').pop()?.toLowerCase();
+  
+  // 최적화 파라미터 추가
+  const params = new URLSearchParams();
+  if (width) params.append('w', width.toString());
+  params.append('q', quality.toString());
+  
+  // webp 변환 지원 (확장자가 jpg, jpeg, png인 경우)
+  if (['jpg', 'jpeg', 'png'].includes(extension || '')) {
+    params.append('fm', 'webp');
+  }
+  
+  return `${src}?${params.toString()}`;
+}
+
+/**
+ * 반응형 이미지 크기 계산
+ * @param originalDimensions 원본 이미지 크기
+ * @param containerWidth 컨테이너 너비
+ * @returns 계산된 이미지 크기
+ */
+export function calculateResponsiveImageSize(
+  originalDimensions: ImageDimensions,
+  containerWidth: number
+): ImageDimensions {
+  const { width, height } = originalDimensions;
+  const aspectRatio = width / height;
+  
+  const newWidth = Math.min(width, containerWidth);
+  const newHeight = Math.round(newWidth / aspectRatio);
+  
+  return { width: newWidth, height: newHeight };
+}
+
+/**
+ * 이미지 사이즈 속성 생성
+ * @param breakpoints 브레이크포인트별 너비 (vw 단위)
+ * @returns sizes 속성 문자열
+ */
+export function generateImageSizes(breakpoints: Record<string, number>): string {
+  return Object.entries(breakpoints)
+    .map(([breakpoint, size]) => `(max-width: ${breakpoint}) ${size}vw`)
+    .join(', ');
+}
+
+/**
+ * 이미지 로딩 우선순위 결정
+ * @param index 이미지 인덱스
+ * @param isAboveFold 첫 화면에 표시되는지 여부
+ * @returns 우선순위 여부
+ */
+export function shouldPrioritizeImage(index: number, isAboveFold: boolean = false): boolean {
+  // 첫 화면에 표시되는 첫 3개 이미지는 우선순위 부여
+  return isAboveFold && index < 3;
+}
+
+/**
+ * 이미지 플레이스홀더 색상 생성
+ * @param color 기본 색상 (HEX)
+ * @returns 데이터 URL
+ */
+export function generatePlaceholder(color: string = '#f0f0f0'): string {
+  // SVG 기반 단색 플레이스홀더
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="${color}"/>
+  </svg>`;
+  
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
+/**
+ * 이미지 로딩 상태 관리를 위한 클래스명 생성
+ * @param isLoaded 로딩 완료 여부
+ * @returns 클래스명 문자열
+ */
+export function getImageLoadingClassNames(isLoaded: boolean): string {
+  return isLoaded 
+    ? 'opacity-100 transition-opacity duration-500' 
+    : 'opacity-0';
+}
+
+/**
+ * 기본 이미지 속성 생성
+ * @param alt 대체 텍스트
+ * @param priority 우선순위 여부
+ * @returns 이미지 속성 객체
+ */
+export function getDefaultImageProps(alt: string, priority: boolean = false) {
+  return {
+    alt,
+    loading: priority ? 'eager' : 'lazy',
+    decoding: 'async',
+    style: { 
+      color: 'transparent' 
+    },
+  };
+} 

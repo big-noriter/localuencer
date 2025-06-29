@@ -1,7 +1,7 @@
 "use client"
 // Next.js의 클라이언트 사이드 네비게이션을 위한 링크 컴포넌트
 import Link from "next/link"
-import { useState } from "react"
+import React, { useState, useMemo } from "react"
 // UI 컴포넌트들 가져오기
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -80,8 +80,8 @@ export function SiteHeader() {
   const { items } = useCart()
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
-  // 1. 인플루언서 미나 메뉴
-  const influencerMenuItems = [
+  // 메뉴 아이템 데이터를 메모이제이션하여 불필요한 재생성 방지
+  const influencerMenuItems = useMemo(() => [
     {
       title: "브이로그",
       href: "/vlogs",
@@ -118,10 +118,10 @@ export function SiteHeader() {
       description: "미나 관련 뉴스",
       icon: Newspaper
     }
-  ]
+  ], [])
 
-  // 2. 미나와 경주여행 메뉴
-  const travelMenuItems = [
+  // 2. 미나와 경주여행 메뉴 - 메모이제이션 적용
+  const travelMenuItems = useMemo(() => [
     {
       title: "여행계획",
       href: "/ai-travel-planner",
@@ -158,10 +158,70 @@ export function SiteHeader() {
       description: "AI로 만드는 특별한 경주 사진엽서",
       icon: Camera
     }
-  ]
+  ], [])
+
+  // 서브메뉴 상태 관리 - 필요할 때만 콘텐츠 렌더링
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   // 테마 상태 관리 (다크/라이트 모드)
   const { theme, setTheme } = useTheme()
+
+  // 메모이제이션된 인플루언서 메뉴 콘텐츠
+  const influencerMenuContent = useMemo(() => (
+    <ul className="grid gap-3 p-6 md:w-[500px] lg:w-[600px] lg:grid-cols-[.75fr_1fr]">
+      <li className="row-span-6">
+        <NavigationMenuLink asChild>
+          <Link
+            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md relative overflow-hidden"
+            href="/vlogs"
+          >
+            {/* 과잠바 입은 미나의 반투명 배경 이미지 */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+              style={{
+                backgroundImage: 'url(/mina-casual.png)',
+                backgroundPosition: 'center bottom'
+              }}
+            />
+            <div className="relative z-10">
+              <div className="mb-2 mt-4 text-lg font-medium">
+                인플루언서 미나
+              </div>
+              <p className="text-sm leading-tight text-muted-foreground">
+                경주의 매력을 전하는 AI 인플루언서 미나의 다양한 콘텐츠를 만나보세요
+              </p>
+            </div>
+          </Link>
+        </NavigationMenuLink>
+      </li>
+      {influencerMenuItems.map((item) => (
+        <ListItem
+          key={item.title}
+          title={item.title}
+          href={item.href}
+          icon={item.icon}
+        >
+          {item.description}
+        </ListItem>
+      ))}
+    </ul>
+  ), [influencerMenuItems]);
+
+  // 메모이제이션된 여행 메뉴 콘텐츠
+  const travelMenuContent = useMemo(() => (
+    <ul className="grid gap-3 p-6 md:w-[600px] lg:w-[700px] lg:grid-cols-2">
+      {travelMenuItems.map((item) => (
+        <ListItem
+          key={item.title}
+          title={item.title}
+          href={item.href}
+          icon={item.icon}
+        >
+          {item.description}
+        </ListItem>
+      ))}
+    </ul>
+  ), [travelMenuItems]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -181,71 +241,34 @@ export function SiteHeader() {
           <NavigationMenuList>
             {/* 1. 인플루언서 미나 */}
             <NavigationMenuItem>
-              <NavigationMenuTrigger className="flex items-center gap-2">
+              <NavigationMenuTrigger 
+                className="flex items-center gap-2"
+                onClick={() => setActiveMenu(activeMenu === "influencer" ? null : "influencer")}
+              >
                 <User className="w-4 h-4" />
                 인플루언서 미나
               </NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="grid gap-3 p-6 md:w-[500px] lg:w-[600px] lg:grid-cols-[.75fr_1fr]">
-                  <li className="row-span-6">
-                    <NavigationMenuLink asChild>
-                      <Link
-                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md relative overflow-hidden"
-                        href="/vlogs"
-                      >
-                        {/* 과잠바 입은 미나의 반투명 배경 이미지 */}
-                        <div 
-                          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
-                          style={{
-                            backgroundImage: 'url(/mina-casual.png)',
-                            backgroundPosition: 'center bottom'
-                          }}
-                        />
-                        <div className="relative z-10">
-                          <div className="mb-2 mt-4 text-lg font-medium">
-                            인플루언서 미나
-                          </div>
-                          <p className="text-sm leading-tight text-muted-foreground">
-                            경주의 매력을 전하는 AI 인플루언서 미나의 다양한 콘텐츠를 만나보세요
-                          </p>
-                        </div>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                  {influencerMenuItems.map((item) => (
-                    <ListItem
-                      key={item.title}
-                      title={item.title}
-                      href={item.href}
-                      icon={item.icon}
-                    >
-                      {item.description}
-                    </ListItem>
-                  ))}
-                </ul>
-              </NavigationMenuContent>
+              {activeMenu === "influencer" && (
+                <NavigationMenuContent>
+                  {influencerMenuContent}
+                </NavigationMenuContent>
+              )}
             </NavigationMenuItem>
 
             {/* 2. 미나와 경주여행 */}
             <NavigationMenuItem>
-              <NavigationMenuTrigger className="flex items-center gap-2">
+              <NavigationMenuTrigger 
+                className="flex items-center gap-2"
+                onClick={() => setActiveMenu(activeMenu === "travel" ? null : "travel")}
+              >
                 <MapPin className="w-4 h-4" />
                 미나와 경주여행
               </NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="grid gap-3 p-6 md:w-[600px] lg:w-[700px] lg:grid-cols-2">
-                  {travelMenuItems.map((item) => (
-                    <ListItem
-                      key={item.title}
-                      title={item.title}
-                      href={item.href}
-                      icon={item.icon}
-                    >
-                      {item.description}
-                    </ListItem>
-                  ))}
-                </ul>
-              </NavigationMenuContent>
+              {activeMenu === "travel" && (
+                <NavigationMenuContent>
+                  {travelMenuContent}
+                </NavigationMenuContent>
+              )}
             </NavigationMenuItem>
 
             {/* 3. 지역상품 */}
@@ -431,7 +454,8 @@ export function SiteHeader() {
   )
 }
 
-const ListItem = ({
+// ListItem 컴포넌트 메모이제이션
+const ListItem = React.memo(({
   className,
   title,
   children,
@@ -467,4 +491,5 @@ const ListItem = ({
       </NavigationMenuLink>
     </li>
   )
-}
+})
+ListItem.displayName = "ListItem"
